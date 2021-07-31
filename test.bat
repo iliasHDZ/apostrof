@@ -1,0 +1,1 @@
+"C:\Program Files\qemu\qemu-system-i386" -vga cirrus -drive id=disk,file=image.img,format=raw,if=none -device ide-hd,drive=disk,bus=ide.0 dist/os-test.img
