@@ -60,4 +60,6 @@
 
 void ide_init();
 
-//i8 ide_ata_read(ide_device* d, u32 sector, u8 sectornum, u8* dst);
+struct ide_drive;
+
+i8 ide_ata_read(struct ide_drive* d, u32 sector, u8 sectornum, u8* dst);

@@ -29,7 +29,13 @@ const char* storage_path(storage_dev* d) {
 }
 
 u8 storage_read(storage_dev* d, u32 sector, u8 sectorcount, u8* dst) {
-    //if (d->type == )
+    if (d->type == STORAGE_IDE) {
+        ide_drive* ide = (ide_drive*) d;
+
+        if (!ide->atapi)
+            return ide_ata_read(ide, sector, sectorcount, dst);
+        else return 1;
+    }
 }
 
 u8 storage_add(storage_dev* d) {

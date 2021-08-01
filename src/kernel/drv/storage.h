@@ -13,7 +13,7 @@ typedef struct {
     u32   size;        // Size in sectors (1 sector = 512b)
 } storage_dev;
 
-typedef struct {
+typedef struct ide_drive {
     STORAGE_TYPE type;
 
     char* device_name;

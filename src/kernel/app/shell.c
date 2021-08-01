@@ -354,8 +354,8 @@ void run_command(int argc, char** argv) {
             writeSize(d->size * 512);
             vga_write("\n\n");
         }
-    } else if (cmpstr(command, "ide_read")) {
-        /*if (argc >= 3) {
+    } else if (cmpstr(command, "drive_read")) {
+        if (argc >= 3) {
             u32 drv  = parse_hex(argv[1]);
             u32 sec  = parse_hex(argv[2]);
             u32 size = 512;
@@ -363,13 +363,14 @@ void run_command(int argc, char** argv) {
             if (argc >= 4)
                 size  = parse_hex(argv[3]);
 
-            if (drv < ide_loadedDrives()) {
-                u8* buffer    = kmalloc(512);
-                ide_device* d = ide_getDrive(drv);
+            storage_dev* d = storage_getDevice(drv);
+
+            if (d != 0) {
+                u8* buffer = kmalloc(512);
 
                 u8 err;
 
-                if ((err = ide_ata_read(d, sec, 1, buffer)) != 0) {
+                if ((err = storage_read(d, sec, 1, buffer)) != 0) {
                     vga_write("read error ");
                     vga_writeByte(err);
                     vga_writeChar('\n');
@@ -380,7 +381,7 @@ void run_command(int argc, char** argv) {
             } else
                 vga_print("drive doesn't exist");
         } else
-            vga_print("too few arguments");*/
+            vga_print("too few arguments");
     } else {
         vga_write("unknown command: ");
         vga_print(command);
