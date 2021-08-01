@@ -7,7 +7,7 @@ LINKER 	= linker.ld
 SRC_DIR   = src
 BUILD_DIR = build
 
-SRC_ASM = $(SRC_DIR)/boot/main.asm  $(SRC_DIR)/kernel/gdt_a.asm  $(SRC_DIR)/kernel/int/isr_a.asm  $(SRC_DIR)/kernel/cpu/cpuid_a.asm #$(shell find $(SRC_DIR) -name *.asm)
+SRC_ASM = $(SRC_DIR)/boot/main.asm $(SRC_DIR)/kernel/int/isr_a.asm  $(SRC_DIR)/kernel/cpu/cpuid_a.asm #$(shell find $(SRC_DIR) -name *.asm)
 SRC_C   = $(shell find $(SRC_DIR) -name *.c)
 
 HEADERS = $(shell find $(SRC_DIR) -name *.h)

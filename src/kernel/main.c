@@ -13,7 +13,6 @@
 
 #include "kmm.h"
 
-#include "gdt.h"
 #include "error.h"
 
 #define SHELL_INPUT_BUFFER_SIZE 128
@@ -59,7 +58,7 @@ void kernel_main() {
 
     vga_setColor(VGA_LIGHT_GREEN, VGA_BLACK);
 
-    vga_print("Welcome to tes-os by IliasHDZ!");
+    vga_print("Welcome to Apostrof'");
 
     shell_init(input_buffer, SHELL_INPUT_BUFFER_SIZE);
 
