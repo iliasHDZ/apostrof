@@ -84,6 +84,30 @@ void vga_writeDWord(u32 value) {
     vga_writeWord(value & 0xffff);
 }
 
+char writeInteger_value[20];
+
+void vga_writeInteger(int value) {
+    if (value == 0){
+        vga_writeChar('0');
+        return;
+    }
+
+    if (value < 0) {
+        vga_writeChar('-');
+        value = -value;
+    }
+    
+    int i;
+    for (i = 0; value != 0; i++) {
+        writeInteger_value[sizeof(writeInteger_value) - i - 2] = hex[value % 10];
+        value /= 10;
+    }
+
+    writeInteger_value[sizeof(writeInteger_value) - 1] = 0;
+
+    vga_write(writeInteger_value + sizeof(writeInteger_value) - i - 1);
+}
+
 void vga_clear() {
     for (int i = 0; i < VGA_WIDTH * VGA_HEIGHT * 2; i += 2) {
         vram[i]     = ' ';

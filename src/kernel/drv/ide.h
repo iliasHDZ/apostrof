@@ -58,22 +58,6 @@
 #define ATA_IDENT_COMMANDSETS  164
 #define ATA_IDENT_MAX_LBA_EXT  200
 
-typedef struct {
-   u8  present;
-   u8  channel;
-   u8  drive;
-   u16 type;
-   u16 signature;
-   u16 capabilities;
-   u32 command_sets;
-   u32 size;
-   u8  model[41];
-} ide_device;
-
 void ide_init();
 
-i8 ide_ata_read(ide_device* d, u32 sector, u8 sectornum, u8* dst);
-
-int ide_loadedDrives();
-
-ide_device* ide_getDrive(int i);
+//i8 ide_ata_read(ide_device* d, u32 sector, u8 sectornum, u8* dst);

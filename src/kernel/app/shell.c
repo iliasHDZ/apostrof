@@ -3,7 +3,7 @@
 #include "../drv/keyboard.h"
 #include "../drv/keys.h"
 #include "../drv/pci.h"
-#include "../drv/ide.h"
+#include "../drv/storage.h"
 
 #include "../vga.h"
 #include "../io.h"
@@ -139,7 +139,34 @@ u32 parse_hex(const char* hex) {
     return ret;
 }
 
-#include "../drv/timer.h"
+void writeSize(u64 bytes) {
+    if (bytes > 1024) {
+        bytes >>= 10;
+
+        if (bytes > 1024) {
+            bytes >>= 10;
+
+            if (bytes > 1024) {
+                bytes >>= 10;
+
+                vga_writeInteger(bytes);
+                vga_write(" GiB");
+                return;
+            }
+
+            vga_writeInteger(bytes);
+            vga_write(" MiB");
+            return;
+        }
+
+        vga_writeInteger(bytes);
+        vga_write(" KiB");
+        return;
+    }
+
+    vga_writeInteger(bytes);
+    vga_write(" b");
+}
 
 void run_command(int argc, char** argv) {
     is_reading = 0;
@@ -297,49 +324,38 @@ void run_command(int argc, char** argv) {
             }
         } else
             vga_print("too few arguments");
-    } else if (cmpstr(command, "ide")) {
-        vga_print("IDE drives found:\n");
+    } else if (cmpstr(command, "drive")) {
+        vga_print("Drives found:\n");
 
-        for (int i = 0; i < ide_loadedDrives(); i++) {
-            ide_device* d = ide_getDrive(i);
-
+        storage_dev* d;
+        for (int i = 0; (d = storage_getDevice(i)) != 0; i++) {
             vga_setColor(VGA_WHITE, VGA_BLACK);
 
-            int spaces = 0;
-            for (int j = 0; j < 40; j++) {
-                char c = d->model[j];
-
-                if (c == ' ') spaces++;
-                else {
-                    if (spaces > 0) 
-                        for (int k = 0; k < spaces; k++) vga_writeChar(' ');
-                    
-                    vga_writeChar(c);
-                    spaces = 0;
-                }
-            }
+            vga_write(storage_path(d));
 
             vga_setColor(VGA_LIGHT_GRAY, VGA_BLACK);
 
             vga_write(" : ");
-            vga_write(d->type ? "ATAPI" : "ATA");
-            vga_writeChar(' ');
 
-            vga_setColor(VGA_DARK_GRAY, VGA_BLACK);
+            if (d->type == STORAGE_IDE) {
+                ide_drive* ide = (ide_drive*)d;
 
-            vga_write(d->channel ? "Secondary" : "Primary");
-            vga_writeChar(' ');
-            vga_write(d->drive ? "Slave" : "Master");
-            vga_print(" Drive");
+                vga_write("IDE ");
 
-            vga_setColor(VGA_LIGHT_GRAY, VGA_BLACK);
+                vga_write(ide->channel ? "Secondary" : "Primary");
+                vga_writeChar(' ');
+                vga_write(ide->drive ? "Slave" : "Master");
+                
+                vga_write("\nModel: ");
+                vga_write(ide->device_name);
+            }
 
-            vga_write("Size: ");
-            vga_writeDWord(d->size);
+            vga_write("\nSize: ");
+            writeSize(d->size * 512);
             vga_write("\n\n");
         }
     } else if (cmpstr(command, "ide_read")) {
-        if (argc >= 3) {
+        /*if (argc >= 3) {
             u32 drv  = parse_hex(argv[1]);
             u32 sec  = parse_hex(argv[2]);
             u32 size = 512;
@@ -364,7 +380,7 @@ void run_command(int argc, char** argv) {
             } else
                 vga_print("drive doesn't exist");
         } else
-            vga_print("too few arguments");
+            vga_print("too few arguments");*/
     } else {
         vga_write("unknown command: ");
         vga_print(command);

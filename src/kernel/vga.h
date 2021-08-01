@@ -45,6 +45,8 @@ void vga_writeWord(u16 value);
 
 void vga_writeDWord(u32 value);
 
+void vga_writeInteger(int value);
+
 void vga_clear();
 
 void vga_setCursor(u8 x, u8 y);

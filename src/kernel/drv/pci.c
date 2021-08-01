@@ -2,6 +2,8 @@
 
 #include "../io.h"
 
+#include "../vga.h"
+
 pci_device devices[20];
 int device_count = 0;
 

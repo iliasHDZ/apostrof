@@ -2,9 +2,14 @@
 #include "pci.h"
 
 #include "../io.h"
-#include "../drv/timer.h"
 
 #include "../vga.h"
+
+#include "timer.h"
+#include "storage.h"
+
+extern u8 storage_addIDEDevice(char* model, u32 size, u8 atapi, u8 present, u8 channel,
+                               u8 drive, u16 signature, u16 capabilities, u32 command_sets);
 
 typedef struct {
     u16 base;
@@ -14,17 +19,8 @@ typedef struct {
 } ide_channel_regs;
 
 ide_channel_regs channels[2];
-ide_device ide_drives[4];
 
-int drive_count;
-
-int ide_loadedDrives() {
-    return drive_count;
-}
-
-ide_device* ide_getDrive(int i) {
-    return &ide_drives[i];
-}
+#define offset(t, d, o) *(t*)(d + o)
 
 void ide_write(u8 ch, u8 reg, u8 data) {
     ide_channel_regs* chr = &channels[ch];
@@ -95,7 +91,7 @@ void ide_lba_mode(u8 ch, u8 lba) {
     ide_write(ch, ATA_REG_HDDEVSEL, hdsel & ~(1 << 6) | (lba << 6));
 }
 
-u8 ide_set_lba(ide_device* d, u32 lba, u8 sectornum) {
+u8 ide_set_lba(ide_drive* d, u32 lba, u8 sectornum) {
     u8 lba_mode, lba_io[6], head;
 
     if (lba >= 0x10000000) {
@@ -132,9 +128,6 @@ u8 ide_set_lba(ide_device* d, u32 lba, u8 sectornum) {
         lba_io[4] = 0;
         lba_io[5] = 0;
     }
-
-    //ide_select_drive(d->channel, d->drive);
-    //ide_lba_mode(d->channel, lba_mode > 0);
 
     ide_write(d->channel, ATA_REG_HDDEVSEL, 0xA0 | (d->drive << 4) | ((lba_mode > 0) << 6) | head);
  
@@ -176,7 +169,38 @@ unsigned char ide_polling(unsigned char channel, unsigned int advanced_check) {
     return 0;
 }
 
-void ide_init_device(pci_device* d) {
+void ide_addDevice(u8 present, u8 ch, u8 drv, u8 type, u8* id_data) {
+    u16 signature    = offset(u16, id_data, ATA_IDENT_DEVICETYPE);
+    u16 capabilities = offset(u16, id_data, ATA_IDENT_CAPABILITIES);
+    u32 command_sets = offset(u32, id_data, ATA_IDENT_COMMANDSETS);
+    u32 size;
+
+    char model[40];
+
+    if (command_sets & (1 << 26))
+        size = offset(u32, id_data, ATA_IDENT_MAX_LBA_EXT);
+    else
+        size = offset(u32, id_data, ATA_IDENT_MAX_LBA);
+
+    for (int i = 0; i < 40; i += 2) {
+        model[i] = id_data[ATA_IDENT_MODEL + i + 1];
+        model[i + 1] = id_data[ATA_IDENT_MODEL + i];
+    }
+
+    storage_addIDEDevice(
+        model,
+        size,
+        type,
+        present,
+        ch,
+        drv,
+        signature,
+        capabilities,
+        command_sets
+    );
+}
+
+void ide_search(pci_device* d) {
     u8 id_data[512];
     
     u32 BAR0 = pci_BAR0(d);
@@ -205,8 +229,6 @@ void ide_init_device(pci_device* d) {
     for (int c = 0; c < 2; c++)
         for (int d = 0; d < 2; d++) {
             u8 err = 0, type = IDE_ATA;
-
-            ide_drives[drive_count].present = 0;
 
             ide_write(c, ATA_REG_HDDEVSEL, 0xA0 | (d << 4));
             timer_sleep(1);
@@ -245,28 +267,11 @@ void ide_init_device(pci_device* d) {
             for (int i = 0; i < 128; i++)
                 ((u32*)id_data)[i] = ide_readl(c, ATA_REG_DATA);
 
-            ide_drives[drive_count] = (ide_device){1, c, d, type,
-                *((unsigned short *)(id_data + ATA_IDENT_DEVICETYPE)),
-                *((unsigned short *)(id_data + ATA_IDENT_CAPABILITIES)),
-                *((unsigned int *)(id_data + ATA_IDENT_COMMANDSETS))
-            };
-
-            if (ide_drives[drive_count].command_sets & (1 << 26))
-                ide_drives[drive_count].size   = *((unsigned int *)(id_data + ATA_IDENT_MAX_LBA_EXT));
-            else
-                ide_drives[drive_count].size   = *((unsigned int *)(id_data + ATA_IDENT_MAX_LBA));
-        
-            for (int i = 0; i < 40; i += 2) {
-                ide_drives[drive_count].model[i] = id_data[ATA_IDENT_MODEL + i + 1];
-                ide_drives[drive_count].model[i + 1] = id_data[ATA_IDENT_MODEL + i];
-            }
-
-            ide_drives[drive_count].model[40] = 0;
-            drive_count++;
+            ide_addDevice(1, c, d, type, id_data);
         }
 }
 
-i8 ide_ata_read(ide_device* d, u32 sector, u8 sectornum, u8* dst) {
+i8 ide_ata_read(ide_drive* d, u32 sector, u8 sectornum, u8* dst) {
     u8 ch = d->channel, cmd, err;
 
     ide_write(ch, ATA_REG_CONTROL, channels[ch].nIEN = 0x0 + 0x02);
@@ -295,7 +300,9 @@ void ide_init() {
     for (int i = 0; i < pci_devicesFound(); i++) {
         pci_device* d = pci_getDevice(i);
 
-        if (d->baseClass == PCI_MASS_STORAGE && d->baseClass == 0x01)
-            ide_init_device(d);
+        if (d->baseClass == PCI_MASS_STORAGE && d->baseClass == 0x01) {
+            ide_search(d);
+            break;
+        }
     }
 }

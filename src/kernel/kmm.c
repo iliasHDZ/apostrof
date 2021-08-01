@@ -7,6 +7,13 @@ void kmm_init() {
     entries[0] = (mem_entry){0, 0};
 }
 
+void* memcpy(void* dst, void* src, u32 size) {
+    for (u32 i = 0; i < size; i++)
+        ((u8*)dst)[i] = ((u8*)src)[i];
+
+    return dst;
+}
+
 u8 kmm_addEntry(u32 base, u32 limit) {
     if (entry_count >= MEM_ENTRIES) return 0;
 
@@ -61,10 +68,59 @@ int kmm_getEntryIndex(u32 base) {
     int e = 0;
 
     while (entries[e].base != 0) {
-        if (e >= MEM_ENTRIES) return 0;
-        if (e >= entry_count) return 0;
+        if (e >= MEM_ENTRIES) return -1;
+        if (e >= entry_count) return -1;
         if (entries[e].base == base) return e;
         e++;
+    }
+}
+
+void* krealloc(void* ptr, u32 size) {
+    int idx = kmm_getEntryIndex((u32)ptr);
+    if (idx == -1) return kmalloc(size);
+
+    mem_entry* e = &entries[idx];
+
+    if (idx + 1 >= entry_count)
+        if ((KHEAP_LIMIT - e->base) >= size) {
+            e->limit = e->base + size;
+            return ptr;
+        } else {
+            u8* src = (u8*)(e->base);
+            u32 len = e->limit - (u32)src;
+
+            kmm_removeEntry((u32)src);
+
+            void* ret = kmalloc(size);
+
+            if (ret != 0)
+                return memcpy(ret, src, size);
+            else {
+                kmm_addEntry((u32)src, (u32)src + len);
+                return 0;
+            }
+        }
+    else {
+        mem_entry* nxt = &entries[idx + 1];
+
+        if ((nxt->base - e->base) >= size) {
+            e->limit = e->base + size;
+            return ptr;
+        } else {
+            u8* src = (u8*)(e->base);
+            u32 len = e->limit - (u32)src;
+
+            kmm_removeEntry((u32)src);
+
+            void* ret = kmalloc(size);
+
+            if (ret != 0)
+                return memcpy(ret, src, size);
+            else {
+                kmm_addEntry((u32)src, (u32)src + len);
+                return 0;
+            }
+        }
     }
 }
 

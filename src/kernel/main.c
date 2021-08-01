@@ -8,6 +8,7 @@
 #include "drv/keys.h"
 #include "drv/pci.h"
 #include "drv/ide.h"
+#include "drv/storage.h"
 
 #include "app/shell.h"
 
@@ -54,6 +55,8 @@ void kernel_main() {
     vga_print("Keyboard initialized\n");
 
     pci_init();
+
+    storage_init();
     ide_init();
 
     vga_setColor(VGA_LIGHT_GREEN, VGA_BLACK);

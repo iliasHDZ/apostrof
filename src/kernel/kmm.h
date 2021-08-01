@@ -15,6 +15,10 @@ typedef struct {
 
 void kmm_init();
 
+void* memcpy(void* dst, void* src, u32 size);
+
 void* kmalloc(u32 size);
+
+void* krealloc(void* ptr, u32 size);
 
 void kfree(void* block);
