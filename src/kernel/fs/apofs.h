@@ -32,3 +32,5 @@ u8 apofs_getFileName(apo_fs* fs, u32 file_id, char* name_out, int len_out);
 u8 apofs_getFileInfo(apo_fs* fs, u32 file_id, apofs_fileinfo* info_out);
 
 u32 apofs_getChild(apo_fs* fs, u32 file_id, const char* child_name);
+
+u32 apofs_getFile(apo_fs* fs, const char* path);

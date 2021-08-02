@@ -15,7 +15,7 @@ typedef struct {
 
 void kmm_init();
 
-void* memcpy(void* dst, void* src, u32 size);
+void* memcpy(void* dst, const void* src, u32 size);
 
 void* kmalloc(u32 size);
 

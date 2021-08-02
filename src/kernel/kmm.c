@@ -7,7 +7,7 @@ void kmm_init() {
     entries[0] = (mem_entry){0, 0};
 }
 
-void* memcpy(void* dst, void* src, u32 size) {
+void* memcpy(void* dst, const void* src, u32 size) {
     for (u32 i = 0; i < size; i++)
         ((u8*)dst)[i] = ((u8*)src)[i];
 

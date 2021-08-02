@@ -100,6 +100,7 @@ apo_fs* apofs_openDevice(storage_dev* d) {
 
     if (storage_read(d, bootsec->bitmap_base, bitmap_size, bitmap) != 0) {
         kfree(bootsec);
+        kfree(bitmap);
         apofs_last_error = APOFS_READ_FAIL;
         return 0;
     }
@@ -113,6 +114,7 @@ apo_fs* apofs_openDevice(storage_dev* d) {
     fs->file_base   = bootsec->file_base;
     fs->desc_size   = bootsec->desc_size;
     
+    fs->bitmap      = bitmap;
     fs->bitmap_size = bitmap_size;
 
     kfree(bootsec);
@@ -256,4 +258,66 @@ u32 apofs_getChild(apo_fs* fs, u32 file_id, const char* child_name) {
     kfree(file);
     apofs_last_error = 0;
     return 0;
+}
+
+u32 apofs_getFile(apo_fs* fs, const char* path) {
+    int len = 0;
+    while (path[len] != 0)
+        len++;
+
+    char* file_path = kmalloc(len + 1);
+
+    memcpy(file_path, path, len);
+    file_path[len] = 0;
+    
+    u8 non_slash = 0;
+
+    int fncount = 0;
+
+    for (int i = 0; i < len; i++) {
+        char c = file_path[i];
+
+        if (non_slash && (c == '/')) {
+            fncount++;
+            file_path[i] = 0;
+        }
+
+        non_slash = c != '/';
+    }
+
+    if (non_slash) fncount++;
+
+    char** fns = kmalloc(sizeof(char*) * fncount);
+
+    non_slash = 0;
+    int fn = 0;
+
+    for (int i = 0; i < len; i++) {
+        char c = file_path[i];
+        u8 nsl = c != '/' && c != 0;
+
+        if (!non_slash && nsl) {
+            fns[fn] = file_path + i;
+            fn++;
+        }
+
+        non_slash = nsl;
+    }
+
+    u32 file_id = 1;
+
+    for (int i = 0; i < fncount; i++) {
+        file_id = apofs_getChild(fs, file_id, fns[i]);
+
+        if (file_id == 0) {
+            kfree(file_path);
+            kfree(fns);
+            apofs_last_error = 0;
+            return 0;
+        }
+    }
+
+    kfree(file_path);
+    kfree(fns);
+    return file_id;
 }

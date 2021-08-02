@@ -71,15 +71,15 @@ void kernel_main() {
 
             vga_print(file_name);
 
-            u32 child = apofs_getChild(fs, 1, "test_file");
+            u32 file = apofs_getFile(fs, "this IS A very COOL FIle/test_file");
 
-            if (child == 0) {
-                vga_write("Failed to find child ");
+            if (file == 0) {
+                vga_write("Failed to find file ");
                 vga_writeWord(apofs_lastError());
                 vga_writeChar('\n');
             } else {
-                vga_write("Child found! file_id: ");
-                vga_writeInteger(child);
+                vga_write("File found! file_id: ");
+                vga_writeInteger(file);
                 vga_writeChar('\n');
             }
         } else {
