@@ -12,6 +12,8 @@
 
 #include "app/shell.h"
 
+#include "fs/apofs.h"
+
 #include "kmm.h"
 
 #include "error.h"
@@ -58,6 +60,38 @@ void kernel_main() {
 
     storage_init();
     ide_init();
+
+    apo_fs* fs = apofs_openDevice(storage_getDevice(0));
+
+    if (fs != 0) {
+        char file_name[60];
+
+        if (apofs_getFileName(fs, 1, file_name, 59) == 0) {
+            file_name[59] = 0;
+
+            vga_print(file_name);
+
+            u32 child = apofs_getChild(fs, 1, "test_file");
+
+            if (child == 0) {
+                vga_write("Failed to find child ");
+                vga_writeWord(apofs_lastError());
+                vga_writeChar('\n');
+            } else {
+                vga_write("Child found! file_id: ");
+                vga_writeInteger(child);
+                vga_writeChar('\n');
+            }
+        } else {
+            vga_write("Failed to get filename ");
+            vga_writeWord(apofs_lastError());
+            vga_writeChar('\n');
+        }
+    } else {
+        vga_write("Failed to open filesystem ");
+        vga_writeWord(apofs_lastError());
+        vga_writeChar('\n');
+    }
 
     vga_setColor(VGA_LIGHT_GREEN, VGA_BLACK);
 

@@ -1,8 +1,26 @@
-section .boot
 org 0x7c00
-
 bits 16
 
+jmp start
+
+db "APOFS   "
+
+; Disk type
+dd 00ff00ffh
+
+; Bitmap base
+dd 00000100h
+
+; Table base
+dd 00000101h
+
+; File base
+dd 00000180h
+
+; Descriptor Size
+dw 0002h
+
+start:
 mov bp, 0x9000
 mov sp, bp
 

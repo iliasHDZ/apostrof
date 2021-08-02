@@ -20,6 +20,8 @@ BOOT_ASM = bootsector.asm
 BOOT_BIN   = dist/bootsector.bin
 KERNEL_BIN = dist/kernel.bin
 
+FS_DATA = fs_data.bin
+
 ASM = nasm
 CC  = gcc
 
@@ -42,8 +44,8 @@ $(KERNEL_BIN): $(OBJ_ASM) $(OBJ_C) $(LINKER)
 	echo $(shell find src -name *.asm) && \
 	ld -m elf_i386 -n -o $(KERNEL_BIN) -T $(LINKER) $(OBJ_ASM) $(OBJ_C)
 
-$(IMG_OUT): $(BOOT_BIN) $(KERNEL_BIN)
-	cat $(BOOT_BIN) $(KERNEL_BIN) > $(IMG_OUT)
+$(IMG_OUT): $(BOOT_BIN) $(KERNEL_BIN) $(FS_DATA)
+	cat $(BOOT_BIN) $(KERNEL_BIN) $(FS_DATA) > $(IMG_OUT)
 
 clean:
 	rm -rf $(BUILD_DIR) $(KERNEL_BOOT) dist

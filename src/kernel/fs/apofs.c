@@ -1,0 +1,259 @@
+#include "apofs.h"
+
+#include "../kmm.h"
+#include "../vga.h"
+
+#define APOFS_STD_DIR  0x01
+#define APOFS_STD_FILE 0x02
+
+#define APOFS_CHILDREN_DATA 0x54
+
+typedef struct {
+    u16 jump;
+    u8  fs_name[8];
+    u32 disk_type;
+    u32 bitmap_base;
+    u32 table_base;
+    u32 file_base;
+    u16 desc_size;
+} __attribute__((packed)) apofs_header;
+
+typedef struct {
+    u8   type;
+    u32  parent;
+    char name[59];
+    u64  creation_date;
+    u64  modified_date;
+    u16  attributes;
+    u16  padding;
+} __attribute__((packed)) apofs_std_filedesc;
+
+u16 apofs_last_error = 0;
+
+u8 cmpstr_len(char* str1, char* str2, int len) {
+    for (int i = 0; i < len; i++)
+        if (str1[i] != str2[i]) return 0;
+
+    return 1;
+}
+
+u8 cmpstr(const char* str1, const char* str2);
+
+u16 apofs_lastError() {
+    return apofs_last_error;
+}
+
+#define APOFS_READ_FAIL             0x0001
+#define APOFS_INVALID_FS_TEXT       0x0002
+#define APOFS_TABLE_BASE_TOO_FAR    0x0003
+#define APOFS_BITMAP_BASE_TOO_FAR   0x0004
+#define APOFS_FILE_BASE_OUT_OF_DISK 0x0005
+#define APOFS_DESC_SIZE_TOO_BIG     0x0006
+#define APOFS_NOT_A_FILE            0x0007
+#define APOFS_FILE_NOT_PRESENT      0x0008
+#define APOFS_NOT_A_DIR             0x0009
+
+apo_fs* apofs_openDevice(storage_dev* d) {
+    if (d == 0) return 0;
+    if (d->size < 1) return 0;
+
+    apofs_header* bootsec = kmalloc(512);
+
+    if (storage_read(d, 0, 1, (u8*)bootsec) != 0) {
+        kfree(bootsec);
+        apofs_last_error = APOFS_READ_FAIL;
+        return 0;
+    }
+
+    if (!cmpstr_len(bootsec->fs_name, "APOFS   ", 8)) {
+        kfree(bootsec);
+        apofs_last_error = APOFS_INVALID_FS_TEXT;
+        return 0;
+    }
+
+    if (bootsec->file_base < bootsec->table_base) {
+        kfree(bootsec);
+        apofs_last_error = APOFS_TABLE_BASE_TOO_FAR;
+        return 0;
+    }
+
+    if (bootsec->table_base < bootsec->bitmap_base) {
+        kfree(bootsec);
+        apofs_last_error = APOFS_BITMAP_BASE_TOO_FAR;
+        return 0;
+    }
+
+    if (bootsec->file_base >= d->size) {
+        kfree(bootsec);
+        apofs_last_error = APOFS_FILE_BASE_OUT_OF_DISK;
+        return 0;
+    }
+
+    if (bootsec->desc_size > 8) {
+        kfree(bootsec);
+        apofs_last_error = APOFS_DESC_SIZE_TOO_BIG;
+        return 0;
+    }
+
+    u32 bitmap_size = bootsec->table_base - bootsec->bitmap_base;
+    u8* bitmap      = kmalloc(bitmap_size);
+
+    if (storage_read(d, bootsec->bitmap_base, bitmap_size, bitmap) != 0) {
+        kfree(bootsec);
+        apofs_last_error = APOFS_READ_FAIL;
+        return 0;
+    }
+
+    apo_fs* fs = kmalloc(sizeof(apo_fs));
+
+    fs->device = d;
+
+    fs->bitmap_base = bootsec->bitmap_base;
+    fs->table_base  = bootsec->table_base;
+    fs->file_base   = bootsec->file_base;
+    fs->desc_size   = bootsec->desc_size;
+    
+    fs->bitmap_size = bitmap_size;
+
+    kfree(bootsec);
+    return fs;
+}
+
+u8 apofs_isPresent(apo_fs* fs, u32 file_id) {
+    if (file_id == 0) return 0;
+    if (((file_id - 1) * fs->desc_size) >= (fs->file_base - fs->table_base)) return 0;
+
+    if ((file_id - 1) >= fs->bitmap_size * 512 * 8) return 0;
+
+    u32 byte = (file_id - 1) / 8;
+    u8  bit  = (file_id - 1) % 8;
+
+    return (fs->bitmap[byte] >> bit) & 0x01;
+}
+
+u8 apofs_setPresent(apo_fs* fs, u32 file_id, u8 present) {
+    if (file_id == 0) return 1;
+    if (((file_id - 1) * fs->desc_size) >= (fs->file_base - fs->table_base)) return 1;
+    if ((file_id - 1) >= fs->bitmap_size * 512 * 8) return 1;
+    u32 byte = (file_id - 1) / 8;
+    u8  bit  = (file_id - 1) % 8;
+
+    if (present) fs->bitmap[byte] |=   1 << bit;
+    else         fs->bitmap[byte] &= ~(1 << bit);
+    return 0;
+}
+
+u8 apofs_getFileName(apo_fs* fs, u32 file_id, char* name_out, int len_out) {
+    if (!apofs_isPresent(fs, file_id)) {
+        apofs_last_error = APOFS_FILE_NOT_PRESENT;
+        return 1;
+    }
+
+    int sector = (file_id - 1) * fs->desc_size + fs->table_base;
+    
+    apofs_std_filedesc* file = kmalloc(512);
+
+    if (storage_read(fs->device, sector, 1, (u8*)file) != 0) {
+        kfree(file);
+        apofs_last_error = APOFS_READ_FAIL;
+        return 1;
+    }
+
+    if (file->type != APOFS_STD_DIR && file->type != APOFS_STD_FILE)  {
+        kfree(file);
+        apofs_last_error = APOFS_NOT_A_FILE;
+        return 1;
+    }
+
+    int i = 0;
+    for (i = 0; i < len_out && i < 59 && file->name[i] != 0; i++)
+        name_out[i] = file->name[i];
+    
+    name_out[i] = 0;
+
+    kfree(file);
+    return 0;
+}
+
+u8 apofs_getFileInfo(apo_fs* fs, u32 file_id, apofs_fileinfo* info_out) {
+    if (!apofs_isPresent(fs, file_id)) {
+        apofs_last_error = APOFS_FILE_NOT_PRESENT;
+        return 1;
+    }
+
+    int sector = (file_id - 1) * fs->desc_size + fs->table_base;
+    
+    apofs_std_filedesc* file = kmalloc(512);
+
+    if (storage_read(fs->device, sector, 1, (u8*)file) != 0) {
+        kfree(file);
+        apofs_last_error = APOFS_READ_FAIL;
+        return 1;
+    }
+
+    if (file->type != APOFS_STD_DIR && file->type != APOFS_STD_FILE)  {
+        kfree(file);
+        apofs_last_error = APOFS_NOT_A_FILE;
+        return 1;
+    }
+
+    info_out->dir           = file->type == APOFS_STD_DIR;
+    info_out->parent        = file->parent;
+    info_out->creation_date = file->creation_date;
+    info_out->modified_date = file->modified_date;
+    info_out->attributes    = file->attributes;
+
+    kfree(file);
+    return 0;
+}
+
+u32 apofs_getChild(apo_fs* fs, u32 file_id, const char* child_name) {
+    if (!apofs_isPresent(fs, file_id)) {
+        apofs_last_error = APOFS_FILE_NOT_PRESENT;
+        return 0;
+    }
+
+    u8 file[512];
+
+    for (int s = 0; s < fs->desc_size; s++) {
+        int sector = (file_id - 1) * fs->desc_size + fs->table_base + s;
+
+        if (storage_read(fs->device, sector, 1, file) != 0) {
+            kfree(file);
+            apofs_last_error = APOFS_READ_FAIL;
+            return 0;
+        }
+
+        if (file[0] != APOFS_STD_DIR && s == 0) {
+            kfree(file);
+            apofs_last_error = APOFS_NOT_A_DIR;
+            return 0;
+        }
+
+        u32* children   = (u32*)(file + ((u8*)s == 0 ? APOFS_CHILDREN_DATA : 0));
+        int  childCount = (512 - ((u8*)s == 0 ? APOFS_CHILDREN_DATA : 0)) / sizeof(u32);
+
+        char file_name[60];
+        file_name[59] = 0;
+
+        for (int i = 0; i < childCount; i++) {
+            if (children[i] == 0) {
+                kfree(file);
+                apofs_last_error = 0;
+                return 0;
+            }
+
+            if (apofs_getFileName(fs, children[i], file_name, 59) != 0)
+                continue;
+
+            if (cmpstr(child_name, file_name)) {
+                kfree(file);
+                return children[i];
+            }
+        }
+    }
+    
+    kfree(file);
+    apofs_last_error = 0;
+    return 0;
+}
