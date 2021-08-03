@@ -6,7 +6,7 @@
 #define APOFS_STD_DIR  0x01
 #define APOFS_STD_FILE 0x02
 
-#define APOFS_CHILDREN_DATA 0x54
+#define APOFS_CHILDREN_DATA 0x58
 
 typedef struct {
     u16 jump;
@@ -25,7 +25,7 @@ typedef struct {
     u64  creation_date;
     u64  modified_date;
     u16  attributes;
-    u16  padding;
+    u8   padding[6];
 } __attribute__((packed)) apofs_std_filedesc;
 
 u16 apofs_last_error = 0;
@@ -221,13 +221,11 @@ u32 apofs_getChild(apo_fs* fs, u32 file_id, const char* child_name) {
         int sector = (file_id - 1) * fs->desc_size + fs->table_base + s;
 
         if (storage_read(fs->device, sector, 1, file) != 0) {
-            kfree(file);
             apofs_last_error = APOFS_READ_FAIL;
             return 0;
         }
 
         if (file[0] != APOFS_STD_DIR && s == 0) {
-            kfree(file);
             apofs_last_error = APOFS_NOT_A_DIR;
             return 0;
         }
@@ -240,7 +238,6 @@ u32 apofs_getChild(apo_fs* fs, u32 file_id, const char* child_name) {
 
         for (int i = 0; i < childCount; i++) {
             if (children[i] == 0) {
-                kfree(file);
                 apofs_last_error = 0;
                 return 0;
             }
@@ -249,13 +246,11 @@ u32 apofs_getChild(apo_fs* fs, u32 file_id, const char* child_name) {
                 continue;
 
             if (cmpstr(child_name, file_name)) {
-                kfree(file);
                 return children[i];
             }
         }
     }
     
-    kfree(file);
     apofs_last_error = 0;
     return 0;
 }
@@ -320,4 +315,49 @@ u32 apofs_getFile(apo_fs* fs, const char* path) {
     kfree(file_path);
     kfree(fns);
     return file_id;
+}
+
+u32 apofs_getFileSize(apo_fs* fs, u32 file_id) {
+    if (!apofs_isPresent(fs, file_id)) {
+        apofs_last_error = APOFS_FILE_NOT_PRESENT;
+        return 0;
+    }
+
+    u8 file[512];
+
+    u32 size = 0;
+
+    for (int s = 0; s < fs->desc_size; s++) {
+        int sector = (file_id - 1) * fs->desc_size + fs->table_base + s;
+
+        if (storage_read(fs->device, sector, 1, file) != 0) {
+            apofs_last_error = APOFS_READ_FAIL;
+            return 0;
+        }
+
+        if (file[0] != APOFS_STD_FILE && s == 0) {
+            apofs_last_error = APOFS_NOT_A_DIR;
+            return 0;
+        }
+
+        u32 header_offset = (u8*)s == 0 ? APOFS_CHILDREN_DATA : 0;
+
+        u32* children   = (u32*)(file + header_offset);
+        int  childCount = (512 - header_offset) / sizeof(u32);
+
+        char file_name[60];
+        file_name[59] = 0;
+
+        for (int i = 0; i < childCount; i += 2) {
+            if (children[i] == 0) 
+                return size * 512 - 512 + children[i + 1];
+
+            u32 base  = children[i];
+            u32 limit = children[i + 1];
+
+            size += limit - base;
+        }
+    }
+
+    return size * 512;
 }

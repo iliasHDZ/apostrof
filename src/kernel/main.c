@@ -66,25 +66,25 @@ void kernel_main() {
     if (fs != 0) {
         char file_name[60];
 
-        if (apofs_getFileName(fs, 1, file_name, 59) == 0) {
-            file_name[59] = 0;
+        file_name[59] = 0;
 
-            vga_print(file_name);
+        vga_print(file_name);
 
-            u32 file = apofs_getFile(fs, "this IS A very COOL FIle/test_file");
+        u32 file = apofs_getFile(fs, "test_file.txt");
 
-            if (file == 0) {
-                vga_write("Failed to find file ");
-                vga_writeWord(apofs_lastError());
-                vga_writeChar('\n');
-            } else {
-                vga_write("File found! file_id: ");
-                vga_writeInteger(file);
-                vga_writeChar('\n');
-            }
-        } else {
-            vga_write("Failed to get filename ");
+        if (file == 0) {
+            vga_write("Failed to find file ");
             vga_writeWord(apofs_lastError());
+            vga_writeChar('\n');
+        } else {
+            vga_write("File found! file_id: ");
+            vga_writeInteger(file);
+            vga_writeChar('\n');
+
+            u32 size = apofs_getFileSize(fs, file);
+
+            vga_write("File size: ");
+            vga_writeInteger(size);
             vga_writeChar('\n');
         }
     } else {
