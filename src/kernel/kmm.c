@@ -3,6 +3,8 @@
 mem_entry* entries = (mem_entry*)MEM_ENTRY_BASE;
 int entry_count = 0;
 
+#define round_up(v, x) ((v / x + (v % x == 0 ? 0 : 1)) * x)
+
 void kmm_init() {
     entries[0] = (mem_entry){0, 0};
 }
@@ -12,6 +14,13 @@ void* memcpy(void* dst, const void* src, u32 size) {
         ((u8*)dst)[i] = ((u8*)src)[i];
 
     return dst;
+}
+
+void* memset(void* ptr, int value, u32 size) {
+    for (u32 i = 0; i < size; i++)
+        ((u8*)ptr)[i] = (u8)value;
+
+    return ptr;
 }
 
 u8 kmm_addEntry(u32 base, u32 limit) {
@@ -122,6 +131,30 @@ void* krealloc(void* ptr, u32 size) {
             }
         }
     }
+}
+
+void* kmalloc_pa(u32 size) {
+    u32 last_limit = KHEAP_BASE;
+
+    for (int i = 0; i < entry_count; i++) {
+        mem_entry* e = &entries[i];
+
+        u32 aligned_limit = round_up(last_limit, 4096);
+
+        if ((e->base - aligned_limit) >= size)
+            if (!kmm_addEntry(aligned_limit, aligned_limit + size)) return (void*)0;
+            else return (void*)aligned_limit;
+
+        last_limit = e->limit;
+    }
+    
+    u32 aligned_limit = round_up(last_limit, 4096);
+
+    if ((KHEAP_LIMIT - aligned_limit) >= size)
+        if (!kmm_addEntry(aligned_limit, aligned_limit + size)) return (void*)0;
+        else return (void*)aligned_limit;
+    else
+        return (void*)0;
 }
 
 void* kmalloc(u32 size) {

@@ -36,3 +36,5 @@ u32 apofs_getChild(apo_fs* fs, u32 file_id, const char* child_name);
 u32 apofs_getFile(apo_fs* fs, const char* path);
 
 u32 apofs_getFileSize(apo_fs* fs, u32 file_id);
+
+u32 apofs_read(apo_fs* fs, u32 file_id, u8* dst, u32 offset, u32 count);

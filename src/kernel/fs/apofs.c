@@ -345,9 +345,6 @@ u32 apofs_getFileSize(apo_fs* fs, u32 file_id) {
         u32* children   = (u32*)(file + header_offset);
         int  childCount = (512 - header_offset) / sizeof(u32);
 
-        char file_name[60];
-        file_name[59] = 0;
-
         for (int i = 0; i < childCount; i += 2) {
             if (children[i] == 0) 
                 return size * 512 - 512 + children[i + 1];
@@ -360,4 +357,113 @@ u32 apofs_getFileSize(apo_fs* fs, u32 file_id) {
     }
 
     return size * 512;
+}
+
+u32 limit_value(u32 value, u32 min, u32 max) {
+    return value > max ? max : (value < min ? min : value);
+}
+
+u32 apofs_read(apo_fs* fs, u32 file_id, u8* dst, u32 offset, u32 count) {
+    if (!apofs_isPresent(fs, file_id)) {
+        apofs_last_error = APOFS_FILE_NOT_PRESENT;
+        return 0;
+    }
+
+    if (count == 0) {
+        apofs_last_error = 0;
+        return 0;
+    }
+
+    u32 base_sector  = offset / 512;
+    u32 limit_sector = (offset + count) / 512 + 1;
+
+    vga_writeDWord(base_sector);
+    vga_write(" - ");
+    vga_writeDWord(limit_sector);
+    vga_writeChar('\n');
+
+    u8* file = kmalloc(fs->desc_size * 512);
+    u8 content_sector[512];
+
+    int sector = (file_id - 1) * fs->desc_size + fs->table_base;
+
+    if (storage_read(fs->device, sector, fs->desc_size, file) != 0) {
+        apofs_last_error = APOFS_READ_FAIL;
+        return 0;
+    }
+
+    if (file[0] == APOFS_STD_DIR) {
+        apofs_last_error = APOFS_NOT_A_FILE;
+        return 0;
+    }
+
+    u32 bytes_read    = 0;
+
+    u32* children     = (u32*)(file + APOFS_CHILDREN_DATA);
+    int  childCount   = (fs->desc_size * 512 - APOFS_CHILDREN_DATA) / sizeof(u32);
+
+    u32 sector_offset = 0;
+    u32 dst_offset    = 0;
+
+    for (int i = 0; i < childCount; i += 2) {
+        if (children[i] == 0) {
+            kfree(file);
+            apofs_last_error = 0;
+            return dst_offset;
+        }
+
+        u32 base  = children[i];
+        u32 limit = children[i + 1];
+
+        u32 last_size = 512;
+
+        if (i != childCount - 1 && children[i + 2] == 0)
+            last_size = children[i + 3];
+
+        u32 sector_count = limit - base;
+
+        u32 read_base  = limit_value(base_sector  - sector_offset, 0, sector_count);
+        u32 read_limit = limit_value(limit_sector - sector_offset, 0, sector_count);
+
+        vga_writeDWord(read_base);
+        vga_write(" - ");
+        vga_writeDWord(read_limit);
+        vga_writeChar('\n');
+
+        for (u32 j = read_base; j < read_limit; j++) {
+            u32 read_begin, read_end;
+
+            if (storage_read(fs->device, base + j, 1, content_sector) != 0) {
+                apofs_last_error = APOFS_READ_FAIL;
+                return 0;
+            }
+
+            if (sector_offset + j == base_sector)
+                read_begin = offset % 512;
+            else
+                read_begin = 0;
+
+            if (sector_offset + j == (limit_sector - 1))
+                read_end = (offset + count) % 512;
+            else
+                read_end = 512;
+
+            if (j == sector_count - 1 && read_end > last_size)
+                read_end = last_size;
+
+            vga_writeDWord(read_begin);
+            vga_write(" - ");
+            vga_writeDWord(read_end);
+            vga_writeChar('\n');
+
+            memcpy(dst + dst_offset, content_sector + read_begin, read_end - read_begin);
+            dst_offset += read_end - read_begin;
+        }
+
+        sector_offset += sector_count;
+    }
+    
+    kfree(file);
+    apofs_last_error = 0;
+    return dst_offset;
 }

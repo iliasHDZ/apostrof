@@ -147,6 +147,11 @@ char *error_msgs[] = {
 };
 
 void isr_handler(isr_regs r) {
+    if (isr_handlers[r.int_no] != 0) {
+        isr_handlers[r.int_no](r);
+        return;
+    }
+    
     vga_writeDWord(r.err_code);
     error(error_msgs[r.int_no]);
 }

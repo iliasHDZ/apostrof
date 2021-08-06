@@ -17,7 +17,11 @@ void kmm_init();
 
 void* memcpy(void* dst, const void* src, u32 size);
 
+void* memset(void* ptr, int value, u32 size);
+
 void* kmalloc(u32 size);
+
+void* kmalloc_pa(u32 size);
 
 void* krealloc(void* ptr, u32 size);
 

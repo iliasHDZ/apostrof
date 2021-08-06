@@ -16,9 +16,16 @@
 
 #include "kmm.h"
 
+#include "vmem.h"
+
 #include "error.h"
 
+#include "io.h"
+
 #define SHELL_INPUT_BUFFER_SIZE 128
+
+#define VGA_CRTC_INDEX		0x3D4
+#define VGA_CRTC_DATA		0x3D5
 
 void error_handler(const char* err) {
     vga_setColor(VGA_RED, VGA_BLACK);
@@ -65,12 +72,13 @@ void kernel_main() {
 
     if (fs != 0) {
         char file_name[60];
+        char file_data[256];
 
         file_name[59] = 0;
 
         vga_print(file_name);
 
-        u32 file = apofs_getFile(fs, "test_file.txt");
+        u32 file = apofs_getFile(fs, "/test_dir/cool.txt");
 
         if (file == 0) {
             vga_write("Failed to find file ");
@@ -86,6 +94,11 @@ void kernel_main() {
             vga_write("File size: ");
             vga_writeInteger(size);
             vga_writeChar('\n');
+
+            vga_hexDump(file_data, apofs_read(fs, file, file_data, 0, 256));
+            vga_writeChar('\n');
+            vga_writeWord(apofs_lastError());
+            vga_writeChar('\n');
         }
     } else {
         vga_write("Failed to open filesystem ");
@@ -96,6 +109,18 @@ void kernel_main() {
     vga_setColor(VGA_LIGHT_GREEN, VGA_BLACK);
 
     vga_print("Welcome to Apostrof'");
+
+    vmem_init();
+
+    vmem* virmem = vmem_createMemory();
+    
+    vmem_switchMemory(virmem);
+    vmem_enable();
+
+    //vga_print("Paging is officially enabled!");
+
+    //vga_writeByte(*((u8*)0xffffff));
+    //vga_writeChar('\n');
 
     shell_init(input_buffer, SHELL_INPUT_BUFFER_SIZE);
 
