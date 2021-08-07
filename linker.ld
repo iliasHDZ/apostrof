@@ -14,6 +14,7 @@ SECTIONS
         *(.data)
         *(.note.gnu.property)
         *(.eh_frame)
+        *(.last_data)
 
         FILL(0x00);
         . = ORIGIN(KERNEL) + LENGTH(KERNEL);

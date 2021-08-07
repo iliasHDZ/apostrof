@@ -12,9 +12,9 @@
 
 #include "../kmm.h"
 
-int max_input;
+int max_input = 127;
 
-char* input_buffer;
+char input_buffer[128];
 
 u8 is_reading = 0;
 int cursor = 0;
@@ -397,7 +397,7 @@ void char_callback(char c) {
         input_buffer[i] = input_buffer[i - 1];
 
     input_buffer[cursor] = c;
-
+    
     cursor++;
     if (cursor >= max_input) cursor = max_input - 1;
 
@@ -437,12 +437,9 @@ void keydown_callback(u16 scancode) {
     }
 }
 
-void shell_init(char* buffer, int buffer_size) {
-    max_input    = buffer_size - 1;
-    input_buffer = buffer;
-
+void shell_init() {
     shell_start();
-    buffer[max_input] = 0;
+    input_buffer[max_input] = 0;
 
     keyboard_char(char_callback);
     keyboard_keydown(keydown_callback);

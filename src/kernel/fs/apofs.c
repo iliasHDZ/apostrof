@@ -1,12 +1,15 @@
 #include "apofs.h"
 
 #include "../kmm.h"
+#include "../error.h"
 #include "../vga.h"
 
 #define APOFS_STD_DIR  0x01
 #define APOFS_STD_FILE 0x02
 
 #define APOFS_CHILDREN_DATA 0x58
+
+apo_fs* current_root = 0;
 
 typedef struct {
     u16 jump;
@@ -466,4 +469,23 @@ u32 apofs_read(apo_fs* fs, u32 file_id, u8* dst, u32 offset, u32 count) {
     kfree(file);
     apofs_last_error = 0;
     return dst_offset;
+}
+
+void apofs_init() {
+    u8 sector_buffer[512];
+
+    u32 current_disk_type = *(u32*)0x7C0A;
+
+    storage_dev* d;
+    for (int i = 0; (d = storage_getDevice(i)) != 0; i++) {
+        if (d->size < 1) continue;
+        if (storage_read(d, 0, 1, sector_buffer) != 0) continue;
+        if (*(u32*)(sector_buffer + 0x0A) != current_disk_type) continue;
+
+        current_root = apofs_openDevice(d);
+        if (current_root == 0) continue;
+    }
+
+    if (current_root == 0) error("Cannot find the current boot medium."
+                                 " Please ensure that the boot medium is a CDROM inserted into an IDE drive.");
 }

@@ -23,6 +23,8 @@ typedef struct {
     u16 attributes;
 } apofs_fileinfo;
 
+extern apo_fs* current_root;
+
 apo_fs* apofs_openDevice(storage_dev* d);
 
 u16 apofs_lastError();
@@ -38,3 +40,5 @@ u32 apofs_getFile(apo_fs* fs, const char* path);
 u32 apofs_getFileSize(apo_fs* fs, u32 file_id);
 
 u32 apofs_read(apo_fs* fs, u32 file_id, u8* dst, u32 offset, u32 count);
+
+void apofs_init();

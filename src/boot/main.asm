@@ -1,4 +1,6 @@
 global start
+global last_kernel_cookie
+
 extern kernel_main
 
 section .kernel_header
@@ -13,7 +15,14 @@ start:
 
     call kernel_main
 
-    jmp $
+    sti
+
+loop:
+    hlt
+    jmp loop
+
+section .last_data
+last_kernel_cookie: dd 0xAABBCCDD
 
 section .bss
 stack_bottom:
