@@ -154,6 +154,37 @@ vmem* vmem_createTaskMemory(u32 code_size, u32 stack_size) {
     return virmem;
 }
 
+void vmem_freeMemory(vmem* virmem) {
+    if (virmem == 0) return;
+
+    for (u32 p = 0; p < 1024 * 1024; p++) {
+        u16 page  = p & 0x3ff;
+        u16 table = p >> 10;
+
+        if (!vmem_tablePresent(virmem, table)) {
+            p = (table + 1) << 10;
+            continue;
+        } else {
+            vmem_table* t = vmem_getTable(virmem, p >> 10);
+            if (!t->pages[page].present) continue;
+
+            if (p >= VMEM_KERNEL_PAGES) {
+                u32 byte = (p - VMEM_KERNEL_PAGES) / 8;
+                u32 bit  = (p - VMEM_KERNEL_PAGES) % 8;
+
+                vmem_bitmap[byte] &= ~(1 << bit);
+            }
+        }
+    }
+
+    for (int i = 0; i < 1024; i++) {
+        if (i >= DEVIDE_CEIL(VMEM_KERNEL_PAGES, 1024) && vmem_tablePresent(virmem, i))
+            kfree(vmem_getTable(virmem, i));
+    }
+
+    kfree(virmem);
+}
+
 void vmem_switchMemory(vmem* virmem) {
     vmem_current = virmem;
     asm volatile("mov %0, %%cr3":: "r"(virmem));

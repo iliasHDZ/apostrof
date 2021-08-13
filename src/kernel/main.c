@@ -12,6 +12,7 @@
 
 #include "fs/apofs.h"
 
+#include "task/task.h"
 #include "task/syscall.h"
 
 #include "kmm.h"
@@ -70,37 +71,9 @@ void kernel_main(u32 stack) {
     vga_setColor(VGA_LIGHT_GREEN, VGA_BLACK);
     vga_print("Apostrof'");*/
 
-    u32 file_id = apofs_getFile(current_root, "/test/app");
+    task* t = task_open(current_root, "/test/app");
 
-    if (file_id == 0) {
-        error("/test/app program not found");
-        return;
-    }
-
-    u32 file_size = apofs_getFileSize(current_root, file_id);
-
-    if (file_size == 0) {
-        error("/test/app program could not open");
-        return;
-    }
-
-    taska = vmem_createTaskMemory(file_size, 4096 * 16);
-
-    if (taska == 0) {
-        error("/test/app could not allocate memory");
-        return;
-    }
-
-    vmem_switchMemory(taska);
-
-    if (apofs_read(current_root, file_id, (u8*)(VMEM_KERNEL_PAGES * 4096), 0, file_size) < file_size) {
-        error("/test/app could not read correctly");
-        return;
-    }
-
-    asm("mov %0, %%esp" : : "r"(VMEM_TASK_STACK));
-    asm("mov %esp, %ebp");
-    asm("jmp %0" : : "r"(VMEM_KERNEL_PAGES * 4096));
+    task_resume(t);
 
     //vga_writeDWord(kernel_stack_base);
     //shell_init();

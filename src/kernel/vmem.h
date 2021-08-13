@@ -56,6 +56,8 @@ extern vmem* kernel_memory;
 
 vmem* vmem_createMemory();
 
+void vmem_freeMemory(vmem* virmem);
+
 void vmem_switchMemory(vmem* virmem);
 
 vmem* vmem_createTaskMemory(u32 code_size, u32 stack_size);
