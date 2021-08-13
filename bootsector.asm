@@ -21,6 +21,7 @@ dd 00000180h
 dw 0002h
 
 start:
+cli
 mov bp, 0x9000
 mov sp, bp
 

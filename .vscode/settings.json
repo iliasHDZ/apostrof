@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "keyboard.h": "c",
-        "storage.h": "c"
+        "storage.h": "c",
+        "random": "c"
     }
 }

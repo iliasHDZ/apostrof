@@ -1,6 +1,11 @@
 extern isr_handler
 extern irq_handler
 
+extern previous_esp
+extern previous_ebp
+
+extern kernel_stack_base
+
 isr_common_stub:
     pusha
     mov ax, ds
@@ -11,7 +16,21 @@ isr_common_stub:
     mov fs, ax
     mov gs, ax
 
+    mov eax, esp
+    mov [previous_esp], eax
+    mov eax, ebp
+    mov [previous_ebp], eax
+
+    mov eax, [kernel_stack_base]
+    mov esp, eax
+
+    ;push DWORD [previous_esp]
     call isr_handler
+
+    mov eax, [previous_esp]
+    mov esp, eax
+    mov eax, [previous_ebp]
+    mov ebp, eax
 
     pop eax 
     mov ds, ax
@@ -32,7 +51,23 @@ irq_common_stub:
     mov es, ax
     mov fs, ax
     mov gs, ax
+
+    mov eax, esp
+    mov [previous_esp], eax
+    mov eax, ebp
+    mov [previous_ebp], eax
+
+    mov eax, [kernel_stack_base]
+    mov esp, eax
+
+    ;push DWORD [previous_esp]
     call irq_handler
+
+    mov eax, [previous_esp]
+    mov esp, eax
+    mov eax, [previous_ebp]
+    mov ebp, eax
+
     pop ebx
     mov ds, bx
     mov es, bx

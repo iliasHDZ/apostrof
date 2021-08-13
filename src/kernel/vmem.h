@@ -58,6 +58,8 @@ vmem* vmem_createMemory();
 
 void vmem_switchMemory(vmem* virmem);
 
+vmem* vmem_createTaskMemory(u32 code_size, u32 stack_size);
+
 void vmem_enable();
 
 void vmem_init();

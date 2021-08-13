@@ -40,7 +40,17 @@ u8 cmpstr_len(char* str1, char* str2, int len) {
     return 1;
 }
 
-u8 cmpstr(const char* str1, const char* str2);
+u8 cmpstr(const char* str1, const char* str2) {
+    int i = 0;
+
+    while(str1[i] != 0 && str2[i] != 0) {
+        if (str1[i] != str2[i]) return 0;
+        i++;    
+    }
+
+    if (str1[i] != str2[i]) return 0;
+    return 1;
+}
 
 u16 apofs_lastError() {
     return apofs_last_error;
@@ -264,6 +274,7 @@ u32 apofs_getFile(apo_fs* fs, const char* path) {
         len++;
 
     char* file_path = kmalloc(len + 1);
+    if (!file_path) return 0;
 
     memcpy(file_path, path, len);
     file_path[len] = 0;
@@ -286,6 +297,7 @@ u32 apofs_getFile(apo_fs* fs, const char* path) {
     if (non_slash) fncount++;
 
     char** fns = kmalloc(sizeof(char*) * fncount);
+    if (!fns) return 0;
 
     non_slash = 0;
     int fn = 0;
@@ -380,11 +392,6 @@ u32 apofs_read(apo_fs* fs, u32 file_id, u8* dst, u32 offset, u32 count) {
     u32 base_sector  = offset / 512;
     u32 limit_sector = (offset + count) / 512 + 1;
 
-    vga_writeDWord(base_sector);
-    vga_write(" - ");
-    vga_writeDWord(limit_sector);
-    vga_writeChar('\n');
-
     u8* file = kmalloc(fs->desc_size * 512);
     u8 content_sector[512];
 
@@ -428,11 +435,6 @@ u32 apofs_read(apo_fs* fs, u32 file_id, u8* dst, u32 offset, u32 count) {
         u32 read_base  = limit_value(base_sector  - sector_offset, 0, sector_count);
         u32 read_limit = limit_value(limit_sector - sector_offset, 0, sector_count);
 
-        vga_writeDWord(read_base);
-        vga_write(" - ");
-        vga_writeDWord(read_limit);
-        vga_writeChar('\n');
-
         for (u32 j = read_base; j < read_limit; j++) {
             u32 read_begin, read_end;
 
@@ -453,11 +455,6 @@ u32 apofs_read(apo_fs* fs, u32 file_id, u8* dst, u32 offset, u32 count) {
 
             if (j == sector_count - 1 && read_end > last_size)
                 read_end = last_size;
-
-            vga_writeDWord(read_begin);
-            vga_write(" - ");
-            vga_writeDWord(read_end);
-            vga_writeChar('\n');
 
             memcpy(dst + dst_offset, content_sector + read_begin, read_end - read_begin);
             dst_offset += read_end - read_begin;

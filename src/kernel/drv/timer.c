@@ -6,7 +6,7 @@
 
 u32 timer_counter = 0;
 
-static void timer_callback(isr_regs r) {
+static void timer_callback(isr_regs* r) {
     timer_counter++;
 }
 

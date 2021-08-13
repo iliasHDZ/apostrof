@@ -78,8 +78,8 @@ typedef struct {
 
 void isr_init();
 
-void isr_handler(isr_regs r);
-void irq_handler(isr_regs r);
+void isr_handler();//isr_regs* r);
+void irq_handler();//isr_regs* r);
 
-typedef void(*isr_callback)(isr_regs);
+typedef void(*isr_callback)(isr_regs*);
 void isr_register(u8 n, isr_callback cb);

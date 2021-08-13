@@ -141,7 +141,7 @@ void* kmalloc_pa(u32 size) {
 
         u32 aligned_limit = round_up(last_limit, 4096);
 
-        if ((e->base - aligned_limit) >= size)
+        if (aligned_limit < e->base && (e->base - aligned_limit) >= size)
             if (!kmm_addEntry(aligned_limit, aligned_limit + size)) return (void*)0;
             else return (void*)aligned_limit;
 
@@ -150,7 +150,7 @@ void* kmalloc_pa(u32 size) {
     
     u32 aligned_limit = round_up(last_limit, 4096);
 
-    if ((KHEAP_LIMIT - aligned_limit) >= size)
+    if (aligned_limit < KHEAP_LIMIT && (KHEAP_LIMIT - aligned_limit) >= size)
         if (!kmm_addEntry(aligned_limit, aligned_limit + size)) return (void*)0;
         else return (void*)aligned_limit;
     else

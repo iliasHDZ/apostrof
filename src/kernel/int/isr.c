@@ -155,36 +155,47 @@ typedef struct page_fault_err {
     u32 padding : 27;
 } page_fault_err;
 
-void isr_handler(isr_regs r) {
-    if (isr_handlers[r.int_no] != 0) {
-        isr_handlers[r.int_no](r);
+extern u32 kernel_stack_base;
+
+isr_regs* previous_isr_regs;
+
+u32 previous_esp;
+u32 previous_ebp;
+
+void isr_handler() {
+    isr_regs* r = (isr_regs*)previous_esp;
+
+    if (isr_handlers[r->int_no] != 0) {
+        isr_handlers[r->int_no](r);
         return;
     }
 
     vga_setColor(VGA_RED, VGA_BLACK);
-    vga_write("\nERROR: ");
-    vga_write(error_msgs[r.int_no]);
+    /*vga_write("\nERROR: ");
+    vga_write(error_msgs[r->int_no]);*/
 
-    if (r.int_no == 14) {
-        vga_write(" - ");
-        page_fault_err page_fault = *(page_fault_err*)(&(r.err_code));
+    if (r->int_no == 14) {
+        /*vga_write(" - ");
+        page_fault_err page_fault = *(page_fault_err*)(&(r->err_code));
         vga_write(!page_fault.present ? "PAGE_NOT_PRESENT " : "");
         vga_write(page_fault.write    ? "WRITE " : "READ ");
         vga_write(page_fault.user     ? "USER_MODE " : "KERNEL_MODE ");
         vga_write(page_fault.overwrt  ? "RESERVES_OVERWRITE " : "");
-        vga_write(page_fault.fetch    ? "INSTRUCTION_FETCH " : "");
+        vga_write(page_fault.fetch    ? "INSTRUCTION_FETCH " : "");*/
     }
 
     asm("cli");
     while (1) {};
 }
 
-void irq_handler(isr_regs r) {
-    if (r.int_no >= 40) outb(0xA0, 0x20);
+void irq_handler() {
+    isr_regs* r = (isr_regs*)previous_esp;
+
+    if (r->int_no >= 40) outb(0xA0, 0x20);
     outb(0x20, 0x20);
 
-    if (isr_handlers[r.int_no] != 0)
-        isr_handlers[r.int_no](r);
+    if (isr_handlers[r->int_no] != 0)
+        isr_handlers[r->int_no](r);
 }
 
 void isr_register(u8 n, isr_callback cb) {

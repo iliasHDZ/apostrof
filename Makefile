@@ -23,6 +23,9 @@ ROM_BIN    = dist/rom_file.bin
 
 FS_DATA = fs_data.bin
 
+TEST_APP_ASM = fs/test/app.asm
+TEST_APP_OUT = fs/test/app
+
 ASM = nasm
 CC  = gcc
 
@@ -45,9 +48,14 @@ $(KERNEL_BIN): $(OBJ_ASM) $(OBJ_C) $(LINKER)
 	echo $(shell find src -name *.asm) && \
 	ld -m elf_i386 -n -o $(KERNEL_BIN) -T $(LINKER) $(OBJ_ASM) $(OBJ_C)
 
-$(IMG_OUT): $(BOOT_BIN) $(KERNEL_BIN)
+$(TEST_APP_OUT): $(TEST_APP_ASM)
+	$(ASM) -f bin $(TEST_APP_ASM) -o $(TEST_APP_OUT)
+
+$(IMG_OUT): $(BOOT_BIN) $(KERNEL_BIN) $(TEST_APP_OUT)
 	cat $(BOOT_BIN) $(KERNEL_BIN) > $(ROM_BIN)
 	node ./fs_converter.js
+
+
 
 clean:
 	rm -rf $(BUILD_DIR) $(KERNEL_BOOT) dist
