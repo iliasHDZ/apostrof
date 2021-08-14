@@ -6,7 +6,8 @@ loop:
     mov ebx, message
 
     int 0x1C
+
     jmp loop
 
-message: db "TASK 2"
+message: db "TASK 1"
 message_length equ $-message

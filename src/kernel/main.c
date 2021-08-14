@@ -64,16 +64,19 @@ void kernel_main(u32 stack) {
     apofs_init();
 
     vmem_init();
+
     syscall_init();
+    task_init();
 
     /*vga_write("Welcome to ");
 
     vga_setColor(VGA_LIGHT_GREEN, VGA_BLACK);
     vga_print("Apostrof'");*/
 
-    task* t = task_open(current_root, "/test/app");
+    task* t1 = task_open(current_root, "/test/task");
+    task* t2 = task_open(current_root, "/test/app");
 
-    task_resume(t);
+    task_resume(t1);
 
     //vga_writeDWord(kernel_stack_base);
     //shell_init();

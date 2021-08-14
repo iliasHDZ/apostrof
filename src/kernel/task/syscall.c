@@ -6,6 +6,9 @@
 void syscall_run(u32 eax, isr_regs* regs) {
     switch (eax)
     {
+    case 0x10:
+        vga_print((const char*)(regs->ebx));
+        break;
     case 0x80: // vga_seek
         regs->eax = vga_seek((int)(regs->ebx), (int)(regs->ecx));
         break;

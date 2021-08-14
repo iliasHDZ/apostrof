@@ -14,6 +14,7 @@
 #define VMEM_KERNEL   0x00000000
 
 #define VMEM_TASK_STACK 0x7fffffff
+#define VMEM_TASK_CODE  0x04000000
 
 typedef struct vmem_page {
     u32 present    : 1;
@@ -53,6 +54,10 @@ typedef struct vmem {
 } vmem;
 
 extern vmem* kernel_memory;
+
+u8 vmem_tablePresent(vmem* virmem, int table);
+
+vmem_table* vmem_getTable(vmem* virmem, int table);
 
 vmem* vmem_createMemory();
 

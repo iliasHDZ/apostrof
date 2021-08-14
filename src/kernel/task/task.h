@@ -20,7 +20,19 @@ typedef struct task {
     u32   ebp;
 } task;
 
+extern u32 task_previous_esp;
+extern u32 task_previous_ebp;
+
+extern u32 task_next_esp;
+extern u32 task_next_ebp;
+
+void task_init();
+
 task* task_open(apo_fs* fs, const char* path);
+
+void task_switch();
+
+void task_exception(int type, int err_code);
 
 // END OF KERNEL CODE EXECUTION
 void task_resume(task* t);

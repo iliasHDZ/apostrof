@@ -1,10 +1,15 @@
 extern isr_handler
 extern irq_handler
 
-extern previous_esp
-extern previous_ebp
+extern task_previous_esp
+extern task_previous_ebp
+
+extern task_next_esp
+extern task_next_ebp
 
 extern kernel_stack_base
+
+global interrupt_return
 
 isr_common_stub:
     pusha
@@ -17,9 +22,9 @@ isr_common_stub:
     mov gs, ax
 
     mov eax, esp
-    mov [previous_esp], eax
+    mov [task_previous_esp], eax
     mov eax, ebp
-    mov [previous_ebp], eax
+    mov [task_previous_ebp], eax
 
     mov eax, [kernel_stack_base]
     mov esp, eax
@@ -27,9 +32,9 @@ isr_common_stub:
     ;push DWORD [previous_esp]
     call isr_handler
 
-    mov eax, [previous_esp]
+    mov eax, [task_previous_esp]
     mov esp, eax
-    mov eax, [previous_ebp]
+    mov eax, [task_previous_ebp]
     mov ebp, eax
 
     pop eax 
@@ -53,9 +58,9 @@ irq_common_stub:
     mov gs, ax
 
     mov eax, esp
-    mov [previous_esp], eax
+    mov [task_previous_esp], eax
     mov eax, ebp
-    mov [previous_ebp], eax
+    mov [task_previous_ebp], eax
 
     mov eax, [kernel_stack_base]
     mov esp, eax
@@ -63,9 +68,26 @@ irq_common_stub:
     ;push DWORD [previous_esp]
     call irq_handler
 
-    mov eax, [previous_esp]
+    mov eax, [task_previous_esp]
     mov esp, eax
-    mov eax, [previous_ebp]
+    mov eax, [task_previous_ebp]
+    mov ebp, eax
+
+    pop ebx
+    mov ds, bx
+    mov es, bx
+    mov fs, bx
+    mov gs, bx
+    popa
+    add esp, 8
+    sti
+    iret 
+
+interrupt_return:
+    mov eax, [task_next_esp]
+    mov ebx, [task_next_ebp]
+    mov esp, eax
+    mov eax, ebx
     mov ebp, eax
 
     pop ebx

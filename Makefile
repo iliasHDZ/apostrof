@@ -23,8 +23,11 @@ ROM_BIN    = dist/rom_file.bin
 
 FS_DATA = fs_data.bin
 
-TEST_APP_ASM = fs/test/app.asm
-TEST_APP_OUT = fs/test/app
+TEST_APP_ASM  = fs/test/app.asm
+TEST_APP_OUT  = fs/test/app
+
+TEST_TASK_ASM = fs/test/task.asm
+TEST_TASK_OUT = fs/test/task
 
 ASM = nasm
 CC  = gcc
@@ -51,7 +54,10 @@ $(KERNEL_BIN): $(OBJ_ASM) $(OBJ_C) $(LINKER)
 $(TEST_APP_OUT): $(TEST_APP_ASM)
 	$(ASM) -f bin $(TEST_APP_ASM) -o $(TEST_APP_OUT)
 
-$(IMG_OUT): $(BOOT_BIN) $(KERNEL_BIN) $(TEST_APP_OUT)
+$(TEST_TASK_OUT): $(TEST_TASK_ASM)
+	$(ASM) -f bin $(TEST_TASK_ASM) -o $(TEST_TASK_OUT)
+
+$(IMG_OUT): $(BOOT_BIN) $(KERNEL_BIN) $(TEST_APP_OUT) $(TEST_TASK_OUT)
 	cat $(BOOT_BIN) $(KERNEL_BIN) > $(ROM_BIN)
 	node ./fs_converter.js
 

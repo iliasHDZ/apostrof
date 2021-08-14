@@ -5,6 +5,7 @@
 #include "../io.h"
 
 #include "../error.h"
+#include "../task/task.h"
 
 isr_callback isr_handlers[256];
 
@@ -159,29 +160,34 @@ extern u32 kernel_stack_base;
 
 isr_regs* previous_isr_regs;
 
-u32 previous_esp;
-u32 previous_ebp;
+extern void interrupt_return();
 
 void isr_handler() {
-    isr_regs* r = (isr_regs*)previous_esp;
+    isr_regs* r = (isr_regs*)task_previous_esp;
+
+    task_next_esp = task_previous_esp;
+    task_next_ebp = task_previous_ebp;
 
     if (isr_handlers[r->int_no] != 0) {
         isr_handlers[r->int_no](r);
+        task_switch();
         return;
     }
 
+    task_exception(r->int_no, r->err_code);
+
     vga_setColor(VGA_RED, VGA_BLACK);
-    /*vga_write("\nERROR: ");
-    vga_write(error_msgs[r->int_no]);*/
+    vga_writeText("\nERROR: ");
+    vga_writeText(error_msgs[r->int_no]);
 
     if (r->int_no == 14) {
-        /*vga_write(" - ");
+        vga_writeText(" - ");
         page_fault_err page_fault = *(page_fault_err*)(&(r->err_code));
-        vga_write(!page_fault.present ? "PAGE_NOT_PRESENT " : "");
-        vga_write(page_fault.write    ? "WRITE " : "READ ");
-        vga_write(page_fault.user     ? "USER_MODE " : "KERNEL_MODE ");
-        vga_write(page_fault.overwrt  ? "RESERVES_OVERWRITE " : "");
-        vga_write(page_fault.fetch    ? "INSTRUCTION_FETCH " : "");*/
+        vga_writeText(!page_fault.present ? "PAGE_NOT_PRESENT " : "");
+        vga_writeText(page_fault.write    ? "WRITE " : "READ ");
+        vga_writeText(page_fault.user     ? "USER_MODE " : "KERNEL_MODE ");
+        vga_writeText(page_fault.overwrt  ? "RESERVES_OVERWRITE " : "");
+        vga_writeText(page_fault.fetch    ? "INSTRUCTION_FETCH " : "");
     }
 
     asm("cli");
@@ -189,13 +195,15 @@ void isr_handler() {
 }
 
 void irq_handler() {
-    isr_regs* r = (isr_regs*)previous_esp;
+    isr_regs* r = (isr_regs*)task_previous_esp;
 
     if (r->int_no >= 40) outb(0xA0, 0x20);
     outb(0x20, 0x20);
 
     if (isr_handlers[r->int_no] != 0)
         isr_handlers[r->int_no](r);
+
+    task_switch();
 }
 
 void isr_register(u8 n, isr_callback cb) {

@@ -55,9 +55,18 @@ u8 vmem_createPage(vmem_table* table, int page, u32 pys_addr, u32 attr) {
     return 0;
 }
 
+u8 log_time = 0;
+
 u8 vmem_mapPage(vmem* virmem, u32 page_addr, u32 pys_addr, u32 attr) {
     u32 page_idx  = (page_addr >> 12) & 0x3FF;
     u32 table_idx = (page_addr >> 22) & 0x3FF;
+
+    if (log_time) {
+        vga_setColor(VGA_GREEN, VGA_BLACK);
+        vga_writeDWord(*(u32*)&(virmem->tables[table_idx]));
+        vga_writeChar('\n');
+        vga_setColor(VGA_WHITE, VGA_BLACK);
+    }
 
     if (!vmem_tablePresent(virmem, table_idx))
         vmem_createTable(virmem, table_idx);
@@ -88,7 +97,11 @@ u8 vmem_allocPage(vmem* virmem, u32 page_addr, u32 attr) {
     u32 pys_addr = vmem_allocFrame();
     if (pys_addr == 0) return 1;
 
+    log_time = 1;
+
     vmem_mapPage(virmem, page_addr, pys_addr, attr);
+
+    log_time = 0;
 
     return 0;
 }
@@ -133,20 +146,33 @@ vmem* vmem_cloneMemory(vmem* src) {
     return virmem;
 }
 
+vmem* vmem_cloneKernelMemory() {
+    vmem* virmem = vmem_createMemory();
+
+    for (u32 i = 0; i < VMEM_KERNEL_PAGES; i++)
+        vmem_mapPage(virmem, i * 4096, i * 4096, VMEM_PRESENT | VMEM_KERNEL);
+    
+    return virmem;
+}
+
 vmem* vmem_createTaskMemory(u32 code_size, u32 stack_size) {
     if (kernel_memory == 0) return 0;
 
-    vmem* virmem = vmem_cloneMemory(kernel_memory);
+    vmem* virmem = vmem_cloneKernelMemory();
     if (virmem == 0) return 0;
 
     u32 code_pages  = DEVIDE_CEIL(code_size, 4096);
     u32 stack_pages = DEVIDE_CEIL(stack_size, 4096);
 
-    u32 code_base_page  = 0x4000000 >> 12;
+    u32 code_base_page  = VMEM_TASK_CODE  >> 12;
     u32 stack_base_page = VMEM_TASK_STACK >> 12;
 
-    for (int i = 0; i < code_pages; i++)
+    for (int i = 0; i < code_pages; i++) {
         vmem_allocPage(virmem, (code_base_page + i) << 12, VMEM_PRESENT | VMEM_WRITABLE | VMEM_USER);
+        vga_writeText("f ");
+        vga_writeDWord((code_base_page + i) << 12);
+        vga_writeChar('\n');
+    }
         
     for (int i = 0; i < stack_pages; i++)
         vmem_allocPage(virmem, (stack_base_page - i) << 12, VMEM_PRESENT | VMEM_WRITABLE | VMEM_USER);
