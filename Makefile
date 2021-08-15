@@ -59,6 +59,7 @@ $(TEST_TASK_OUT): $(TEST_TASK_ASM)
 
 $(IMG_OUT): $(BOOT_BIN) $(KERNEL_BIN) $(TEST_APP_OUT) $(TEST_TASK_OUT)
 	cat $(BOOT_BIN) $(KERNEL_BIN) > $(ROM_BIN)
+	cd apps/test_app && make && cd ../..
 	node ./fs_converter.js
 
 

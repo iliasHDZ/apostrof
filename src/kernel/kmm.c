@@ -9,6 +9,44 @@ void kmm_init() {
     entries[0] = (mem_entry){0, 0};
 }
 
+int parray(PARRAY* a, u32 size) {
+    a->count  = 0;
+    a->size   = size;
+    a->buffer = kmalloc(a->size * sizeof(u8*));
+
+    if (a->buffer == 0) return -1;
+    return 0;
+}
+
+int parray_push(PARRAY* a, void* ptr) {
+    if (a->count >= a->size) {
+        a->size  += 10;
+        a->buffer = krealloc(a->buffer, a->size * sizeof(u8*));
+        // Add check if krealloc failed
+    }
+
+    a->buffer[a->count++] = ptr;
+    return 0;
+}
+
+int parray_remove(PARRAY* a, void* ptr) {
+    for (int i = 0; i < a->count; i++)
+        if (a->buffer[i] == ptr) {
+            a->count--;
+            for (; i < a->count; i++)
+                a->buffer[i] = a->buffer[i + 1];
+
+            return 0;
+        }
+    
+    return -1;
+}
+
+void* parray_get(PARRAY* a, u32 i) {
+    if (i < a->count) return a->buffer[i];
+    else return 0;
+}
+
 void* memcpy(void* dst, const void* src, u32 size) {
     for (u32 i = 0; i < size; i++)
         ((u8*)dst)[i] = ((u8*)src)[i];

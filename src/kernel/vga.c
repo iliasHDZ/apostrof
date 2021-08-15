@@ -1,6 +1,9 @@
 #include "vga.h"
+
 #include "io.h"
 #include "kmm.h"
+
+#include "task/task.h"
 
 char* vram  = (char*)0xb8000;
 u8 color    = VGA_WHITE;
@@ -141,6 +144,24 @@ int vga_write(const char* buffer, int size) {
     ptr_cursor += size;
 
     return size;
+}
+
+fd* vga_open() {
+    fd* fd = fd_createBuffer(vram, vram_size, 1);
+    if (fd == 0) return 0;
+
+    task* t = task_getCurrent();
+    if (t == 0) {
+        kfree(fd); // fd_free();
+        return 0;
+    }
+
+    if (task_attach(t, fd) != 0) {
+        kfree(fd); // fd_free();
+        return 0;
+    }
+
+    return fd;
 }
 
 int vga_get(int global) {

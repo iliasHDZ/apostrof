@@ -1,6 +1,7 @@
 #pragma once
 
 #include "utils.h"
+#include "task/fd.h"
 
 #define VGA_TEXT_WIDTH  80
 #define VGA_TEXT_HEIGHT 25
@@ -35,7 +36,7 @@ void vga_writeChar(char c);
 
 void vga_setColor(u8 fg, u8 bg);
 
-//void vga_write(const char* str);
+void vga_writeText(const char* str);
 
 void vga_print(const char* str);
 
@@ -52,6 +53,8 @@ int vga_tell();
 int vga_read(char* buffer, int size);
 
 int vga_write(const char* buffer, int size);
+
+fd* vga_open();
 
 int vga_get(int global);
 

@@ -74,7 +74,7 @@ void kernel_main(u32 stack) {
     vga_print("Apostrof'");*/
 
     task* t1 = task_open(current_root, "/test/task");
-    task* t2 = task_open(current_root, "/test/app");
+    task* t2 = task_open(current_root, "/test_app");
 
     task_resume(t1);
 

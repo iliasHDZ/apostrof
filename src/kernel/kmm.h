@@ -13,7 +13,22 @@ typedef struct {
     u32 limit;
 } mem_entry;
 
+typedef struct {
+    void** buffer;
+
+    u32    count;
+    u32    size;
+} PARRAY;
+
 void kmm_init();
+
+int parray(PARRAY* a, u32 size);
+
+int parray_push(PARRAY* a, void* t);
+
+int parray_remove(PARRAY* a, void* ptr);
+
+void* parray_get(PARRAY* a, u32 i);
 
 void* memcpy(void* dst, const void* src, u32 size);
 

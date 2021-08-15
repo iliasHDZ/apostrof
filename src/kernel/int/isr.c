@@ -160,13 +160,11 @@ extern u32 kernel_stack_base;
 
 isr_regs* previous_isr_regs;
 
-extern void interrupt_return();
-
 void isr_handler() {
     isr_regs* r = (isr_regs*)task_previous_esp;
 
-    task_next_esp = task_previous_esp;
-    task_next_ebp = task_previous_ebp;
+    /*task_next_esp = task_previous_esp;
+    task_next_ebp = task_previous_ebp;*/
 
     if (isr_handlers[r->int_no] != 0) {
         isr_handlers[r->int_no](r);
@@ -189,6 +187,32 @@ void isr_handler() {
         vga_writeText(page_fault.overwrt  ? "RESERVES_OVERWRITE " : "");
         vga_writeText(page_fault.fetch    ? "INSTRUCTION_FETCH " : "");
     }
+
+    vga_writeChar('\n');
+
+    vga_writeText("EIP = ");
+    vga_writeDWord(r->eip);
+    vga_writeText("\n\n");
+    
+    vga_writeText("EAX = ");
+    vga_writeDWord(r->eax);
+    vga_writeChar('\n');
+    vga_writeText("EBX = ");
+    vga_writeDWord(r->ebx);
+    vga_writeChar('\n');
+    vga_writeText("ECX = ");
+    vga_writeDWord(r->ecx);
+    vga_writeChar('\n');
+    vga_writeText("EDX = ");
+    vga_writeDWord(r->edx);
+    vga_writeText("\n\n");
+    
+    vga_writeText("ESP = ");
+    vga_writeDWord(r->esp);
+    vga_writeChar('\n');
+    vga_writeText("EBP = ");
+    vga_writeDWord(r->ebp);
+    vga_writeChar('\n');
 
     asm("cli");
     while (1) {};

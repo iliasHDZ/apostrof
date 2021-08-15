@@ -29,7 +29,6 @@ isr_common_stub:
     mov eax, [kernel_stack_base]
     mov esp, eax
 
-    ;push DWORD [previous_esp]
     call isr_handler
 
     mov eax, [task_previous_esp]
@@ -65,12 +64,11 @@ irq_common_stub:
     mov eax, [kernel_stack_base]
     mov esp, eax
 
-    ;push DWORD [previous_esp]
     call irq_handler
 
-    mov eax, [task_previous_esp]
+    mov eax, DWORD [task_previous_esp]
     mov esp, eax
-    mov eax, [task_previous_ebp]
+    mov eax, DWORD [task_previous_ebp]
     mov ebp, eax
 
     pop ebx
@@ -84,8 +82,12 @@ irq_common_stub:
     iret 
 
 interrupt_return:
-    mov eax, [task_next_esp]
-    mov ebx, [task_next_ebp]
+    push ebp
+    mov  ebp, esp
+    
+    mov eax, [ebp + 8]
+    mov ebx, [ebp + 12]
+
     mov esp, eax
     mov eax, ebx
     mov ebp, eax
@@ -99,6 +101,8 @@ interrupt_return:
     add esp, 8
     sti
     iret 
+
+db "fuck you"
 
 global isr0
 global isr1
