@@ -1,5 +1,6 @@
 #include "task.h"
 #include "../vga.h"
+#include "elf32.h"
 
 // From assembly at /src/kernel/int/isr_a.asm
 extern void interrupt_return(u32 esp, u32 ebp);
@@ -23,7 +24,12 @@ void task_init() {
         error("Cannot init 'task': kmalloc failed");
 }
 
-task* task_open(apo_fs* fs, const char* path) {
+typedef struct {
+    u32 base;
+    u32 limit;
+} task_heap_block;
+
+/*task* task_open(apo_fs* fs, const char* path) {
     if (fs == 0 || path == 0) return 0;
 
     u32 file_id = apofs_getFile(fs, path);
@@ -62,9 +68,41 @@ task* task_open(apo_fs* fs, const char* path) {
 
     ret->entry   = VMEM_TASK_CODE;
     ret->stack   = VMEM_TASK_STACK;
+    ret->heap    = VMEM_TASK_HEAP;
+
+    ret->heap_limit = ret->heap;
 
     ret->esp     = 0;
     ret->ebp     = 0;
+
+    array(&ret->blocks, sizeof(task_heap_block), 50);
+
+    // TODO: REMOVE THIS!!!
+    vga_setCursor(0, 2);
+
+    parray_push(&tasklist, ret);
+    return ret;
+}*/
+
+task* task_open(apo_fs* fs, const char* path) {
+    task* ret = (task*)kmalloc(sizeof(task));
+    if (ret == 0) return 0;
+
+    char* error = "";
+
+    if (!elf32_load(fs, path, ret, 4096 * 16, &error)) {
+        vga_writeText(error);
+        return 0;
+    }
+
+    if (parray(&(ret->fds), 10) != 0) return 0;
+    ret->pid     = task_last_id++;
+    ret->regs    = 0;
+    ret->running = 0;
+    ret->esp     = 0;
+    ret->ebp     = 0;
+
+    array(&ret->blocks, sizeof(task_heap_block), 50);
 
     parray_push(&tasklist, ret);
     return ret;
@@ -146,6 +184,165 @@ void task_switch() {
     task_resume(parray_get(&tasklist, task_list_current));
 }
 
+task_heap_block* taskmm_getEntryFromIndex(u32 index);
+
+u8 taskmm_addEntry(u32 base, u32 limit) {
+    int i = 0;
+    for (; i < task_current->blocks.count; i++) {
+        task_heap_block* block = taskmm_getEntryFromIndex(i);
+        if (block->base > base) break;
+    }
+
+    task_heap_block block = (task_heap_block){base, limit};
+
+    array_insert(&(task_current->blocks), &block, i);
+    return 1;
+}
+
+int taskmm_getEntryIndex(u32 base) {
+    int e = 0;
+
+    task_heap_block block;
+    if (!array_get(&(task_current->blocks), e, &block))
+        return -1;
+    
+    while (e < task_current->blocks.count) {
+        if (block.base == base) return e;
+        if (++e < task_current->blocks.count)
+            array_get(&(task_current->blocks), e, &block);
+    }
+
+    return -1;
+}
+
+u8 taskmm_removeEntry(u32 base) {
+    int idx = taskmm_getEntryIndex(base);
+    if (idx == -1) return 0;
+
+    array_remove(&(task_current->blocks), idx);
+    return 1;
+}
+
+task_heap_block* taskmm_getEntryFromIndex(u32 index) {
+    return task_current->blocks.buffer + index * task_current->blocks.size;
+}
+
+task_heap_block* taskmm_getEntry(u32 base) {
+    int idx = taskmm_getEntryIndex(base);
+    if (idx == -1) return 0;
+
+    return task_current->blocks.buffer + idx * task_current->blocks.size;
+}
+
+int taskmm_allocHeapPages(u32 count) {
+    for (int i = 0; i < count; i++) {
+        vmem_allocPage(task_current->mem, task_current->heap_limit, VMEM_PRESENT | VMEM_WRITABLE | VMEM_USER);
+        task_current->heap_limit += 4096;
+    }
+}
+
+int taskmm_freeHeapPages(u32 count) {
+    for (int i = 0; i < count; i++) {
+        task_current->heap_limit -= 4096;
+        vmem_freePage(task_current->mem, task_current->heap_limit);
+    }
+}
+
+void taskmm_collect() {
+    u32 max_limit = task_current->heap;
+
+    for (int i = 0; i < task_current->blocks.count; i++) {
+        task_heap_block* block = taskmm_getEntryFromIndex(i);
+        if (block->limit > max_limit) max_limit = block->limit;
+    }
+
+    int limit_page = (max_limit - task_current->heap - 1) / 4096;
+    int heap_limit_page = (task_current->heap_limit - task_current->heap - 1) / 4096;
+
+    if (limit_page < heap_limit_page)
+        taskmm_freeHeapPages(heap_limit_page - limit_page);
+}
+
+void* task_realloc(void* ptr, u32 size) {
+    int idx = taskmm_getEntryIndex((u32)ptr);
+    if (idx == -1) return task_malloc(size);
+
+    task_heap_block* e = taskmm_getEntryFromIndex(idx);
+
+    if (idx + 1 >= task_current->blocks.count)
+        if ((task_current->heap_limit - e->base) >= size) {
+            e->limit = e->base + size;
+            return ptr;
+        } else {
+            u32 excess = e->base + size - task_current->heap_limit;
+            u32 prevsz = task_current->heap_limit - e->base;
+
+            if (excess > 0) {
+                taskmm_allocHeapPages(excess / 4096 + (excess % 4096 > 0));
+                e->limit = e->base + size;
+            }
+
+            if (prevsz > size)
+                taskmm_collect();
+        }
+    else {
+        task_heap_block* nxt = taskmm_getEntryFromIndex(idx + 1);
+
+        if ((nxt->base - e->base) >= size) {
+            e->limit = e->base + size;
+            return ptr;
+        } else {
+            u8* src = (u8*)(e->base);
+            u32 len = e->limit - (u32)src;
+
+            taskmm_removeEntry((u32)src);
+
+            void* ret = task_malloc(size);
+
+            if (ret != 0)
+                return memcpy(ret, src, size);
+            else {
+                taskmm_addEntry((u32)src, (u32)src + len);
+                return 0;
+            }
+        }
+    }
+}
+
+void* task_malloc(u32 size) {
+    u32 last_limit = task_current->heap;
+
+    for (int i = 0; i < task_current->blocks.count; i++) {
+        task_heap_block* e = taskmm_getEntryFromIndex(i);
+
+        if ((e->base - last_limit) >= size) {
+            if (!taskmm_addEntry(last_limit, last_limit + size)) return (void*)0;
+            else return (void*)last_limit;
+        }
+
+        last_limit = e->limit;
+    }
+
+    if ((task_current->heap_limit - last_limit) >= size)
+        if (!taskmm_addEntry(last_limit, last_limit + size)) return (void*)0;
+        else return (void*)last_limit;
+    else {
+        u32 excess = last_limit + size - task_current->heap_limit;
+
+        if (excess > 0) {
+            taskmm_allocHeapPages(excess / 4096 + (excess % 4096 > 0));
+            if (!taskmm_addEntry(last_limit, last_limit + size)) return (void*)0;
+            else return (void*)last_limit;
+        }
+    }
+}
+
+void task_free(void* block) {
+    taskmm_removeEntry((u32) block);
+    taskmm_collect();
+}
+
 void task_exception(int type, int err_code) {
-    // oh no
+    vga_setCursor(0, 2);
+    vga_writeText("I'm pretty sure an task exception happened.\n");
 }

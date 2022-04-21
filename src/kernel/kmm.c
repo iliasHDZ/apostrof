@@ -47,18 +47,55 @@ void* parray_get(PARRAY* a, u32 i) {
     else return 0;
 }
 
-void* memcpy(void* dst, const void* src, u32 size) {
-    for (u32 i = 0; i < size; i++)
-        ((u8*)dst)[i] = ((u8*)src)[i];
+int array(ARRAY* a, u32 size, u32 capacity) {
+    a->count  = 0;
+    a->size   = size;
+    a->capacity = capacity;
+    a->buffer = kmalloc(a->capacity * a->size);
 
-    return dst;
+    if (a->buffer == 0) return 0;
+    return 1;
 }
 
-void* memset(void* ptr, int value, u32 size) {
-    for (u32 i = 0; i < size; i++)
-        ((u8*)ptr)[i] = (u8)value;
+int array_push(ARRAY* a, void* ptr_to_element) {
+    if (a->count >= a->capacity) {
+        a->capacity += 10;
+        a->buffer = krealloc(a->buffer, a->capacity * a->size);
+        // Add check if krealloc failed
+    }
 
-    return ptr;
+    memcpy(a->buffer + a->count * a->size, ptr_to_element, a->size);
+    a->count++;
+
+    return 1;
+}
+
+int array_insert(ARRAY* a, void* ptr_to_element, u32 index) {
+    if (a->count >= a->capacity) {
+        a->capacity += 10;
+        a->buffer = krealloc(a->buffer, a->capacity * a->size);
+        // Add check if krealloc failed
+    }
+
+    memcpy(a->buffer + (index + 1) * a->size, a->buffer + index * a->size, (a->count++ - index) * a->size);
+    memcpy(a->buffer + index * a->size, ptr_to_element, a->size);
+    return 1;
+}
+
+int array_remove(ARRAY* a, u32 index) {
+    if (index >= a->count || index < 0)
+        return 0;
+
+    memcpy(a->buffer + index * a->size, a->buffer + (index + 1) * a->size, (--a->count - index) * a->size);
+    return 1;
+}
+
+int array_get(ARRAY* a, u32 index, void* dst) {
+    if (index >= a->count || index < 0)
+        return 0;
+
+    memcpy(dst, a->buffer + index * a->size, a->size);
+    return 1;
 }
 
 u8 kmm_addEntry(u32 base, u32 limit) {

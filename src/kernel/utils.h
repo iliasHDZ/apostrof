@@ -13,5 +13,9 @@ typedef unsigned long  u64;
 typedef float  f32;
 typedef double f64;
 
+void* memcpy(void* dst, const void* src, u32 size);
+
+void* memset(void* ptr, int value, u32 size);
+
 #define LOW16(v)  v & 0xFFFF
 #define HIGH16(v) (v >> 16) & 0xFFFF

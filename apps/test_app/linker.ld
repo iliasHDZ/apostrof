@@ -1,6 +1,6 @@
 MEMORY
 {
-    APP (rx) : ORIGIN = 0x04000000, LENGTH = (512 * 64)
+    APP (rx) : ORIGIN = 0x08000000, LENGTH = (512 * 64)
 }
 
 SECTIONS
@@ -25,4 +25,4 @@ SECTIONS
     } >APP
 }
 
-OUTPUT_FORMAT(binary)
+ENTRY(start)

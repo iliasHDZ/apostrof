@@ -15,8 +15,13 @@ typedef struct task {
 
     u8     running;
 
+    ARRAY  blocks;
+
     u32    entry;
     u32    stack;
+    u32    heap;
+
+    u32    heap_limit;
 
     u32    esp;
     u32    ebp;
@@ -45,6 +50,12 @@ u32 task_write(fd* fd, char* buffer, u32 size);
 u32 task_tell(fd* fd);
 
 u32 task_seek(fd* fd, int offset, int whence);
+
+void* task_realloc(void* ptr, u32 size);
+
+void* task_malloc(u32 size);
+
+void task_free(void* block);
 
 void task_switch();
 

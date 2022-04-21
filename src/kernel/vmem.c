@@ -19,6 +19,17 @@ vmem_table* vmem_getTable(vmem* virmem, int table) {
     return (vmem_table*)(virmem->tables[table].frame << 12);
 }
 
+vmem_page* vmem_getPage(vmem* virmem, u32 page_addr) {
+    u32 page_idx  = (page_addr >> 12) & 0x3FF;
+    u32 table_idx = (page_addr >> 22) & 0x3FF;
+
+    if (!vmem_tablePresent(virmem, table_idx))
+        return 0;
+
+    vmem_table* table = vmem_getTable(virmem, table_idx);
+    return table->pages[page_idx].present ? &(table->pages[page_idx]) : 0;
+}
+
 vmem_table* vmem_allocTable() {
     vmem_table* table = kmalloc_pa(sizeof(vmem_table));
     if (table == 0) return 0;
@@ -43,12 +54,21 @@ u8 vmem_createTable(vmem* virmem, int i) {
     return vmem_setTable(virmem, i, table);
 }
 
+void vmem_freeTable(vmem* virmem, int i) {
+    if (!vmem_tablePresent(virmem, i)) return;
+
+    vmem_table* table = vmem_getTable(virmem, i);
+    kfree(table);
+
+    virmem->tables[i] = (vmem_table_entry){ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+}
+
 u8 vmem_createPage(vmem_table* table, int page, u32 pys_addr, u32 attr) {
     if (table->pages[page].present) return 0;
 
-    table->pages[page].present  = attr & VMEM_PRESENT  != 0;
-    table->pages[page].writable = attr & VMEM_WRITABLE != 0;
-    table->pages[page].user     = attr & VMEM_USER     != 0;
+    table->pages[page].present  = !!(attr & VMEM_PRESENT);
+    table->pages[page].writable = !!(attr & VMEM_WRITABLE);
+    table->pages[page].user     = !!(attr & VMEM_USER);
 
     table->pages[page].frame = pys_addr >> 12;
 
@@ -67,6 +87,25 @@ u8 vmem_mapPage(vmem* virmem, u32 page_addr, u32 pys_addr, u32 attr) {
     return vmem_createPage(table, page_idx, pys_addr, attr);
 }
 
+void vmem_freePage(vmem* virmem, u32 page_addr) {
+    u32 page_idx  = (page_addr >> 12) & 0x3FF;
+    u32 table_idx = (page_addr >> 22) & 0x3FF;
+
+    if (!vmem_tablePresent(virmem, table_idx))
+        return;
+
+    vmem_table* table = vmem_getTable(virmem, table_idx);
+
+    vmem_freeFrame(table->pages[page_idx].frame << 12);
+
+    table->pages[page_idx] = (vmem_page){ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+    for (int i = 0; i < 1024; i++)
+        if (table->pages[i].present) return;
+
+    vmem_freeTable(virmem, table_idx);
+}
+
 u32 vmem_allocFrame() {
     for (int i = 0; i < vmem_bitmapCount; i++) {
         u32 byte = i / 8;
@@ -82,6 +121,13 @@ u32 vmem_allocFrame() {
     }
 
     return 0;
+}
+
+void vmem_freeFrame(u32 frame) {
+    u32 page = (frame >> 12) - VMEM_KERNEL_PAGES;
+    vmem_bitmap[page / 8] &= ~(1 << (page % 8));
+
+    return;
 }
 
 u8 vmem_allocPage(vmem* virmem, u32 page_addr, u32 attr) {

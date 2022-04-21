@@ -30,7 +30,7 @@ $(OBJ_C): $(BUILD_DIR)/%.o : $(SRC_DIR)/%.c $(HEADERS)
 
 $(APP_OUT): $(OBJ_ASM) $(OBJ_C) $(LINKER)
 	mkdir -p $(dir $(APP_OUT)) && \
-	ld -m elf_i386 -n -o $(APP_OUT) -T $(LINKER) $(OBJ_C) $(OBJ_ASM)
+	ld -m elf_i386 -T linker.ld -n -o $(APP_OUT) $(OBJ_C) $(OBJ_ASM)
 
 
 clean:

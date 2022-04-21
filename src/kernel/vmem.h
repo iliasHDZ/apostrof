@@ -13,8 +13,9 @@
 #define VMEM_USER     0x00000004
 #define VMEM_KERNEL   0x00000000
 
-#define VMEM_TASK_STACK 0x7fffffff
+#define VMEM_TASK_STACK 0xC0000000
 #define VMEM_TASK_CODE  0x04000000
+#define VMEM_TASK_HEAP  0x10000000
 
 typedef struct vmem_page {
     u32 present    : 1;
@@ -58,6 +59,12 @@ extern vmem* kernel_memory;
 u8 vmem_tablePresent(vmem* virmem, int table);
 
 vmem_table* vmem_getTable(vmem* virmem, int table);
+
+vmem_page* vmem_getPage(vmem* virmem, u32 page_addr);
+
+u8 vmem_allocPage(vmem* virmem, u32 page_addr, u32 attr);
+
+void vmem_freePage(vmem* virmem, u32 page_addr);
 
 vmem* vmem_createMemory();
 
