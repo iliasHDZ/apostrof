@@ -20,6 +20,14 @@ typedef struct {
     u32    size;
 } PARRAY;
 
+typedef struct {
+    void** buffer;
+
+    u32    count;
+    u32    size;
+    u32    capacity;
+} ARRAY;
+
 void kmm_init();
 
 int parray(PARRAY* a, u32 size);
@@ -29,6 +37,16 @@ int parray_push(PARRAY* a, void* t);
 int parray_remove(PARRAY* a, void* ptr);
 
 void* parray_get(PARRAY* a, u32 i);
+
+int array(ARRAY* a, u32 size, u32 capacity);
+
+int array_push(ARRAY* a, void* ptr_to_element);
+
+int array_insert(ARRAY* a, void* ptr_to_element, u32 index);
+
+int array_remove(ARRAY* a, u32 index);
+
+int array_get(ARRAY* a, u32 index, void* dst);
 
 void* memcpy(void* dst, const void* src, u32 size);
 

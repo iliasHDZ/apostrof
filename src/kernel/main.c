@@ -73,10 +73,12 @@ void kernel_main(u32 stack) {
     vga_setColor(VGA_LIGHT_GREEN, VGA_BLACK);
     vga_print("Apostrof'");*/
 
-    task* t1 = task_open(current_root, "/test/task");
+    //task* t1 = task_open(current_root, "/test/task");
     task* t2 = task_open(current_root, "/test_app");
 
-    task_resume(t1);
+    task_resume(t2);
+
+    for (;;);
 
     //vga_writeDWord(kernel_stack_base);
     //shell_init();

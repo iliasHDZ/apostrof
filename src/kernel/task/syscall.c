@@ -19,6 +19,21 @@ void syscall_run(u32 eax, isr_regs* regs) {
     case 0x13: // ftell
         regs->eax = task_tell((fd*)(regs->ebx));
         break;
+    case 0x30: // malloc
+        regs->eax = task_malloc(regs->ebx);
+        //vga_writeText(" MALLOC(");
+        //vga_writeInteger(regs->ebx);
+        //vga_writeText(") ");
+        //vga_writeDWord((u32)regs->eax);
+        break;
+    case 0x31: // free
+        task_free((void*)(regs->ebx));
+        //vga_writeText(" FREE ");
+        //vga_writeDWord((u32)regs->ebx);
+        break;
+    case 0x32: // realloc
+        regs->eax = task_realloc((void*)(regs->ebx), regs->ecx);
+        break;
 
     case 0x80: // vga_open
         regs->eax = (u32)vga_open();
