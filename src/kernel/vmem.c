@@ -6,10 +6,14 @@
 u8* vmem_bitmap      = 0;
 u32 vmem_bitmapCount = 0;
 
-vmem* vmem_current   = 0;
+vmem* current_vmem   = 0;
 vmem* kernel_memory  = 0;
 
 #define DEVIDE_CEIL(a, b) a / b + (a % b != 0)
+
+vmem* vmem_current() {
+    return current_vmem;
+}
 
 u8 vmem_tablePresent(vmem* virmem, int table) {
     return virmem->tables[table].present;
@@ -241,7 +245,7 @@ void vmem_freeMemory(vmem* virmem) {
 }
 
 void vmem_switchMemory(vmem* virmem) {
-    vmem_current = virmem;
+    current_vmem = virmem;
     asm volatile("mov %0, %%cr3":: "r"(virmem));
 }
 

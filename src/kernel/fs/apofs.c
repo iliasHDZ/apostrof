@@ -40,18 +40,6 @@ u8 cmpstr_len(char* str1, char* str2, int len) {
     return 1;
 }
 
-u8 cmpstr(const char* str1, const char* str2) {
-    int i = 0;
-
-    while(str1[i] != 0 && str2[i] != 0) {
-        if (str1[i] != str2[i]) return 0;
-        i++;    
-    }
-
-    if (str1[i] != str2[i]) return 0;
-    return 1;
-}
-
 u16 apofs_lastError() {
     return apofs_last_error;
 }
@@ -228,6 +216,11 @@ u32 apofs_getChild(apo_fs* fs, u32 file_id, const char* child_name) {
         return 0;
     }
 
+    vga_writeText("Searching for: ");
+    vga_writeText(child_name);
+    vga_writeChar('\n');
+    vga_writeText("------ ");
+
     u8 file[512];
 
     for (int s = 0; s < fs->desc_size; s++) {
@@ -250,6 +243,16 @@ u32 apofs_getChild(apo_fs* fs, u32 file_id, const char* child_name) {
         file_name[59] = 0;
 
         for (int i = 0; i < childCount; i++) {
+            if (apofs_getFileName(fs, children[i], file_name, 59) != 0)
+                continue;
+
+            vga_writeText(file_name);
+            vga_writeChar(' ');
+        }
+        
+        vga_writeChar('\n');
+
+        for (int i = 0; i < childCount; i++) {
             if (children[i] == 0) {
                 apofs_last_error = 0;
                 return 0;
@@ -258,11 +261,16 @@ u32 apofs_getChild(apo_fs* fs, u32 file_id, const char* child_name) {
             if (apofs_getFileName(fs, children[i], file_name, 59) != 0)
                 continue;
 
+            vga_writeText(file_name);
+            vga_writeChar('\n');
+
             if (cmpstr(child_name, file_name)) {
                 return children[i];
             }
         }
     }
+    
+    vga_writeText("------\n");
     
     apofs_last_error = 0;
     return 0;

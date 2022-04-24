@@ -1,32 +1,11 @@
-unsigned int syscall(unsigned int eax, unsigned int ebx, unsigned int ecx, unsigned int edx) {
-    asm("int $0x1C;" : "=a" (eax) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx));
-    return eax;
-}
+#include <apostrof.h>
 
-unsigned int vga_open() {
-    return syscall(0x80, 0, 0, 0);
-}
-
-void* malloc(unsigned int size) {
-    return (void*)syscall(0x30, size, 0, 0);
-}
-
-void free(void* block) {
-    syscall(0x31, (unsigned int)block, 0, 0);
-}
-
-void* realloc(void* block, unsigned int size) {
-    return (void*)syscall(0x32, (unsigned int)block, size, 0);
-}
-
-int fwrite(unsigned int fd, char* buffer, unsigned int size) {
-    return (int)syscall(0x11, fd, (unsigned int)buffer, size);
-}
+const char* hex = "0123456789ABCDEF";
 
 int write_char(int fd, char c, char color) {
     char buffer[] = {c, color};
 
-    fwrite(fd, buffer, 2);
+    write(fd, buffer, 2);
 }
 
 int fd;
@@ -50,36 +29,35 @@ void* memset(void* ptr, int value, unsigned int size) {
     return ptr;
 }
 
-// .rodata
-const char* test1 = "TEST1 ";
+void vga_writeByte(unsigned char value) {
+    write_char(fd, hex[value >> 4], 0x0f);
+    write_char(fd, hex[value & 0xf], 0x0f);
+}
 
-// .data
-char* test2 = "TEST2 ";
+void vga_writeWord(unsigned short value) {
+    vga_writeByte(value >> 8);
+    vga_writeByte(value & 0xff);
+}
 
-// .bss
-char* test3;
+void vga_writeDWord(unsigned int value) {
+    vga_writeWord(value >> 16);
+    vga_writeWord(value & 0xffff);
+}
 
-int start() {
-    fd = vga_open();
+int main() {
+    fd = open("/dev/fb", O_RDWR);
     if (fd == 0) return 1;
 
-    print(test1);
-    print(test2);
+    unsigned int stdout;
 
-    test2 = "_TEST2 ";
+    unsigned int pid = process_createWithStdout("/test_app2", &stdout);
+    if (pid == 0) return 1;
 
-    print(test2);
-
-    test3 = "TEST3 ";
-
-    print(test3);
-
-    // would have liked for this to give an exception, but the
-    // sections are bunched together in one page which can only
-    // has a writable bit for the whole page.
-    test1 = "EXCEPTION? ";
-
-    for (;;);
+    while (1) {
+        char c;
+        if (read(stdout, &c, 1) == 1)
+            write_char(fd, c, 0x0F);
+    }
 
     return 0;
 }

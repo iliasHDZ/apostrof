@@ -3,7 +3,8 @@
     "configurations": [
         {
             "name": "os",
-            "intelliSenseMode": "gcc-x86"
+            "intelliSenseMode": "gcc-x86",
+            "includePath": ["apolib/include"]
         }
     ]
 }

@@ -17,5 +17,7 @@ void* memcpy(void* dst, const void* src, u32 size);
 
 void* memset(void* ptr, int value, u32 size);
 
+u8 cmpstr(const char* str1, const char* str2);
+
 #define LOW16(v)  v & 0xFFFF
 #define HIGH16(v) (v >> 16) & 0xFFFF

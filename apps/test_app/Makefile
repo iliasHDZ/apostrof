@@ -1,5 +1,3 @@
-PROJECT = os-test
-
 APP_OUT = ./../../fs/test_app
 
 LINKER 	= linker.ld
@@ -26,12 +24,8 @@ $(OBJ_ASM): $(BUILD_DIR)/%.o : $(SRC_DIR)/%.asm
 
 $(OBJ_C): $(BUILD_DIR)/%.o : $(SRC_DIR)/%.c $(HEADERS)
 	mkdir -p $(dir $@) && \
-	$(CC) -fno-pie -c -m32 -ffreestanding $(patsubst $(BUILD_DIR)/%.o, $(SRC_DIR)/%.c, $@) -o $@
+	$(CC) -I../../apolib/include -fno-pie -c -m32 -ffreestanding $(patsubst $(BUILD_DIR)/%.o, $(SRC_DIR)/%.c, $@) -o $@
 
 $(APP_OUT): $(OBJ_ASM) $(OBJ_C) $(LINKER)
 	mkdir -p $(dir $(APP_OUT)) && \
-	ld -m elf_i386 -T linker.ld -n -o $(APP_OUT) $(OBJ_C) $(OBJ_ASM)
-
-
-clean:
-	rm -rf $(BUILD_DIR) $(KERNEL_BOOT) dist
+	ld -m elf_i386 -T linker.ld -n -o $(APP_OUT) ../../apolib/dist/apolib.o $(OBJ_C) $(OBJ_ASM)

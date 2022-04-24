@@ -5,7 +5,7 @@
 // From assembly at /src/kernel/int/isr_a.asm
 extern void interrupt_return(u32 esp, u32 ebp);
 
-u32 task_last_id = 0;
+u32 task_last_id = 1;
 
 u32 task_previous_esp = 0;
 u32 task_previous_ebp = 0;
@@ -29,66 +29,13 @@ typedef struct {
     u32 limit;
 } task_heap_block;
 
-/*task* task_open(apo_fs* fs, const char* path) {
-    if (fs == 0 || path == 0) return 0;
-
-    u32 file_id = apofs_getFile(fs, path);
-    if (file_id == 0) return 0;
-
-    u32 file_size = apofs_getFileSize(fs, file_id);
-    if (file_size == 0) return 0;
-
-    task* ret = (task*)kmalloc(sizeof(task));
-    if (ret == 0) return 0;
-
-    if (parray(&(ret->fds), 10) != 0) return 0;
-
-    vmem* task_memory = vmem_createTaskMemory(file_size, 4096 * 16);
-    
-    if (task_memory == 0) {
-        kfree(ret);
-        return 0;
-    }
-
-    vmem_switchMemory(task_memory);
-
-    if (apofs_read(fs, file_id, VMEM_TASK_CODE, 0, file_size) < file_size) {
-        vmem_switchMemory(kernel_memory);
-        vmem_freeMemory(task_memory);
-        kfree(ret);
-        return 0;
-    }
-
-    ret->pid     = task_last_id++;
-    ret->mem     = task_memory;
-
-    ret->regs    = 0;
-
-    ret->running = 0;
-
-    ret->entry   = VMEM_TASK_CODE;
-    ret->stack   = VMEM_TASK_STACK;
-    ret->heap    = VMEM_TASK_HEAP;
-
-    ret->heap_limit = ret->heap;
-
-    ret->esp     = 0;
-    ret->ebp     = 0;
-
-    array(&ret->blocks, sizeof(task_heap_block), 50);
-
-    // TODO: REMOVE THIS!!!
-    vga_setCursor(0, 2);
-
-    parray_push(&tasklist, ret);
-    return ret;
-}*/
-
-task* task_open(apo_fs* fs, const char* path) {
+task* task_create(apo_fs* fs, const char* path) {
     task* ret = (task*)kmalloc(sizeof(task));
     if (ret == 0) return 0;
 
     char* error = "";
+
+    vmem* last_mem = vmem_current();
 
     if (!elf32_load(fs, path, ret, 4096 * 16, &error)) {
         vga_writeText(error);
@@ -102,10 +49,37 @@ task* task_open(apo_fs* fs, const char* path) {
     ret->esp     = 0;
     ret->ebp     = 0;
 
+    ret->stdin  = fd_createInStream();
+    ret->stdout = void_stream;
+    ret->stderr = void_stream;
+
+    vmem_switchMemory(last_mem);
+
     array(&ret->blocks, sizeof(task_heap_block), 50);
 
     parray_push(&tasklist, ret);
     return ret;
+}
+
+task* task_get(u32 pid) {
+    for (int i = 0; i < tasklist.count; i++) {
+        task* t = (task*)parray_get(&tasklist, i);
+        if (t->pid == pid) return t;
+    }
+    return 0;
+}
+
+void task_close(task* t, int code) {
+    parray_remove(&tasklist, t);
+
+    for (int i = 0; i < t->fds.count; i++)
+        fd_close(parray_get(&(t->fds), i));
+    
+    parray_free(&(t->fds));
+
+    vmem_freeMemory(t->mem);
+    array_free(&(t->blocks));
+    kfree(t);
 }
 
 task* task_getCurrent() {
@@ -142,28 +116,76 @@ void task_resume(task* t) {
     }
 }
 
-u32 task_read(fd* fd, char* buffer, u32 size) {
-    if (!task_fd_present(task_current, fd)) return 0;
+fd* task_getfd(task* t, u32 fdn) {
+    switch ((u32)fdn) {
+    case STDIN:  return t->stdin;
+    case STDOUT: return t->stdout == 0 ? void_stream : t->stdout;
+    case STDERR: return t->stderr == 0 ? void_stream : t->stderr;
+    }
 
-    if (fd->type == FD_RO_FBUFFER || fd->type == FD_RW_FBUFFER)
+    for (int i = 0; i < t->fds.count; i++) {
+        fd* f = parray_get(&(t->fds), i);
+        if (f == (fd*)fdn)
+            return f;
+    }
+
+    return 0;
+}
+
+fd* task_createStdStream(task* task, int type) {
+    fd* ret;
+
+    switch (type) {
+    case STDIN:
+        return fd_createOutStream(task->stdin);
+    case STDOUT:
+        ret = fd_createInStream();
+        task->stdout = fd_createOutStream(ret);
+        return ret;
+    case STDERR:
+        ret = fd_createInStream();
+        task->stderr = fd_createOutStream(ret);
+        return ret;
+    }
+}
+
+fd* task_open(apo_fs* fs, const char* path, int flags) {
+    task* t = task_getCurrent();
+    if (t == 0) return 0;
+
+    if (cmpstr(path, "/dev/fb"))
+        return vga_open();
+
+    return 0;
+}
+
+u32 task_read(fd* fd, char* buffer, u32 size) {
+    fd = task_getfd(task_current, fd);
+    if (fd == 0) return 0;
+
+    if (fd->type == FD_RO_FBUFFER || fd->type == FD_RW_FBUFFER || fd->type == FD_IN_STREAM)
         return fd_read(fd, buffer, size);
 }
 
 u32 task_write(fd* fd, char* buffer, u32 size) {
-    if (!task_fd_present(task_current, fd)) return 0;
+    fd = task_getfd(task_current, fd);
 
-    if (fd->type == FD_RW_FBUFFER)
+    if (fd == 0) return 0;
+
+    if (fd->type == FD_RW_FBUFFER || fd->type == FD_OUT_STREAM || fd->type == FD_VOID)
         return fd_write(fd, buffer, size);
 }
 
 u32 task_tell(fd* fd) {
-    if (!task_fd_present(task_current, fd)) return 0;
+    fd = task_getfd(task_current, fd);
+    if (fd == 0) return 0;
 
     return fd_tell(fd);
 }
 
 u32 task_seek(fd* fd, int offset, int whence) {
-    if (!task_fd_present(task_current, fd)) return 0;
+    fd = task_getfd(task_current, fd);
+    if (fd == 0) return 0;
 
     return fd_seek(fd, offset, whence);
 }
@@ -344,5 +366,5 @@ void task_free(void* block) {
 
 void task_exception(int type, int err_code) {
     vga_setCursor(0, 2);
-    vga_writeText("I'm pretty sure an task exception happened.\n");
+    vga_writeText("I'm pretty sure a task exception happened.\n");
 }

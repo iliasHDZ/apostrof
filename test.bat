@@ -1,1 +1,1 @@
-"C:\Program Files\qemu\qemu-system-i386" -m 4G -vga cirrus -drive id=disk,file=image.img,format=raw,if=none -device ide-hd,drive=disk,bus=ide.0 dist/apostrof.img
+"C:\Program Files\qemu\qemu-system-i386" -m 4G -vga cirrus -drive id=disk,file=image.img,format=raw,if=none -device ide-hd,drive=disk,bus=ide.0 -drive format=raw,file=dist/apostrof.img

@@ -146,24 +146,6 @@ int vga_write(const char* buffer, int size) {
     return size;
 }
 
-fd* vga_open() {
-    fd* fd = fd_createBuffer(vram, vram_size, 1);
-    if (fd == 0) return 0;
-
-    task* t = task_getCurrent();
-    if (t == 0) {
-        kfree(fd); // fd_free();
-        return 0;
-    }
-
-    if (task_attach(t, fd) != 0) {
-        kfree(fd); // fd_free();
-        return 0;
-    }
-
-    return fd;
-}
-
 int vga_get(int global) {
     switch (global)
     {
@@ -195,6 +177,24 @@ int vga_set(int global, int value) {
         return 0;
     default: return -1;
     }
+}
+
+fd* vga_open() {
+    fd* fd = fd_createBuffer(vram, vram_size, 1);
+    if (fd == 0) return 0;
+
+    task* t = task_getCurrent();
+    if (t == 0) {
+        kfree(fd); // fd_free();
+        return 0;
+    }
+
+    if (task_attach(t, fd) != 0) {
+        kfree(fd); // fd_free();
+        return 0;
+    }
+
+    return fd;
 }
 
 char writeInteger_value[20];
@@ -269,7 +269,7 @@ void vga_hexDump(u8* buffer, int size) {
     int line = size / 16 + (size % 16 != 0);
 
     for (int i = 0; i < line; i++) {
-        vga_writeDWord(i * 16);
+        vga_writeDWord(buffer + i * 16);
         vga_writeText("  ");
 
         int a = 0;

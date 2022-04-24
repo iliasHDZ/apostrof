@@ -59,10 +59,11 @@ $(TEST_TASK_OUT): $(TEST_TASK_ASM)
 
 $(IMG_OUT): $(BOOT_BIN) $(KERNEL_BIN) $(TEST_APP_OUT) $(TEST_TASK_OUT)
 	cat $(BOOT_BIN) $(KERNEL_BIN) > $(ROM_BIN)
+	cd apolib && make && cd ..
 	cd apps/test_app && make && cd ../..
+	cd apps/test_app2 && make && cd ../..
+	cd apps/terminal && make && cd ../..
 	node ./fs_converter.js
-
-
 
 clean:
 	rm -rf $(BUILD_DIR) $(KERNEL_BOOT) dist

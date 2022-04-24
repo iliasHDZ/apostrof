@@ -25,4 +25,4 @@ SECTIONS
     } >APP
 }
 
-ENTRY(start)
+ENTRY(__apo_entry)

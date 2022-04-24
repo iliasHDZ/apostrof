@@ -47,6 +47,10 @@ void* parray_get(PARRAY* a, u32 i) {
     else return 0;
 }
 
+void parray_free(PARRAY* a) {
+    kfree(a->buffer);
+}
+
 int array(ARRAY* a, u32 size, u32 capacity) {
     a->count  = 0;
     a->size   = size;
@@ -96,6 +100,10 @@ int array_get(ARRAY* a, u32 index, void* dst) {
 
     memcpy(dst, a->buffer + index * a->size, a->size);
     return 1;
+}
+
+void array_free(ARRAY* a) {
+    kfree(a->buffer);
 }
 
 u8 kmm_addEntry(u32 base, u32 limit) {

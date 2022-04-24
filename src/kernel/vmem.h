@@ -56,6 +56,8 @@ typedef struct vmem {
 
 extern vmem* kernel_memory;
 
+vmem* vmem_current();
+
 u8 vmem_tablePresent(vmem* virmem, int table);
 
 vmem_table* vmem_getTable(vmem* virmem, int table);

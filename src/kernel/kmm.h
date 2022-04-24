@@ -38,6 +38,8 @@ int parray_remove(PARRAY* a, void* ptr);
 
 void* parray_get(PARRAY* a, u32 i);
 
+void parray_free(PARRAY* a);
+
 int array(ARRAY* a, u32 size, u32 capacity);
 
 int array_push(ARRAY* a, void* ptr_to_element);
@@ -47,6 +49,8 @@ int array_insert(ARRAY* a, void* ptr_to_element, u32 index);
 int array_remove(ARRAY* a, u32 index);
 
 int array_get(ARRAY* a, u32 index, void* dst);
+
+void array_free(ARRAY* a);
 
 void* memcpy(void* dst, const void* src, u32 size);
 

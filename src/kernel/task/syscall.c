@@ -4,50 +4,71 @@
 #include "../vga.h"
 #include "task.h"
 
-void syscall_run(u32 eax, isr_regs* regs) {
-    switch (eax)
-    {
-    case 0x10: // fread
-        regs->eax = task_read((fd*)(regs->ebx), (char*)(regs->ecx), regs->edx);
-        break;
-    case 0x11: // fwrite
-        regs->eax = task_write((fd*)(regs->ebx), (char*)(regs->ecx), regs->edx);
-        break;
-    case 0x12: // fseek
-        regs->eax = task_seek((fd*)(regs->ebx), (int)(regs->ecx), (int)(regs->edx));
-        break;
-    case 0x13: // ftell
-        regs->eax = task_tell((fd*)(regs->ebx));
-        break;
-    case 0x30: // malloc
-        regs->eax = task_malloc(regs->ebx);
-        //vga_writeText(" MALLOC(");
-        //vga_writeInteger(regs->ebx);
-        //vga_writeText(") ");
-        //vga_writeDWord((u32)regs->eax);
-        break;
-    case 0x31: // free
-        task_free((void*)(regs->ebx));
-        //vga_writeText(" FREE ");
-        //vga_writeDWord((u32)regs->ebx);
-        break;
-    case 0x32: // realloc
-        regs->eax = task_realloc((void*)(regs->ebx), regs->ecx);
-        break;
+u32 syscall_exec(u32 a, u32 b, u32 c, u32 d) {
+    task* tsk;
+    fd* fdn;
 
-    case 0x80: // vga_open
-        regs->eax = (u32)vga_open();
-        break;
-    case 0x81: // vga_set
-        regs->eax = vga_set((int)(regs->ebx), (int)(regs->ecx));
-        break;
-    case 0x82: // vga_get
-        regs->eax = vga_get((int)(regs->ebx));
-        break;
+    switch (a)
+    {
+    case 0x01: // exit
+        task_close(task_getCurrent(), b); break;
     
+    case 0x10: // read
+        return task_read((fd*)b, (char*)c, d);
+    case 0x11: // write
+        return task_write((fd*)b, (char*)c, d);
+    case 0x12: // seek
+        return task_seek((fd*)b, (int)c, (int)d);
+    case 0x13: // tell
+        return task_tell((fd*)b);
+
+    case 0x30: // malloc
+        return task_malloc(b);
+    case 0x31: // free
+        task_free((void*)b); break;
+    case 0x32: // realloc
+        return task_realloc((void*)b, c);
+    
+    case 0x40: // process_create
+        return task_create(current_root, (const char*)b)->pid;
+    case 0x41: // process_getStdStream
+        tsk = task_get(b);
+        if (tsk == 0) break;
+
+        fdn = task_createStdStream(tsk, c);
+        if (fdn == 0) break;
+
+        task_attach(task_getCurrent(), fdn);
+        return fdn;
+    case 0x42: // process_current
+        return task_getCurrent()->pid;
+    case 0x43: // process_createWithStdout
+        tsk = task_create(current_root, (const char*)b);
+        if (tsk == 0) break;
+
+        fdn = task_createStdStream(tsk, STDOUT);
+        if (fdn == 0) break;
+
+        task_attach(task_getCurrent(), fdn);
+        *(u32*)c = fdn;
+        return tsk->pid;
+
+    case 0x60: // open
+        return task_open(current_root, (const char*)b, (int)c);
+    
+    case 0x80: // video_get
+        return vga_get((int)b);
+    case 0x81: // video_set
+        return vga_set((int)b, (int)c);
     default:
         break;
     }
+
+    return 0;
+}
+
+void syscall_run(u32 eax, isr_regs* regs) {
+    regs->eax = syscall_exec(eax, regs->ebx, regs->ecx, regs->edx);
 }
 
 void syscall_handler(isr_regs* regs) {
