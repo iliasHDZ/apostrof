@@ -13,7 +13,7 @@ u8 cursor_y = 0;
 
 u8 cursor_visible = 0;
 
-const char* hex = "0123456789ABCDEF";
+static const char* hex = "0123456789ABCDEF";
 
 u32 ptr_cursor  = 0;
 u32 vram_size   = VGA_TEXT_WIDTH * VGA_TEXT_HEIGHT * 2;

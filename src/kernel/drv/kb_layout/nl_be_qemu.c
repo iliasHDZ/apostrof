@@ -65,8 +65,8 @@ void nl_be_qemu_keydown(u16 scancode) {
                 case KEY_LBRACKET: send_char(')'); break;
                 case KEY_MINUS: send_char('-'); break;
 
-                case KEY_Q: send_char('q'); break;
-                case KEY_W: send_char('w'); break;
+                case KEY_A: send_char('q'); break;
+                case KEY_Z: send_char('w'); break;
                 case KEY_E: send_char('e'); break;
                 case KEY_R: send_char('r'); break;
                 case KEY_T: send_char('t'); break;
@@ -77,9 +77,9 @@ void nl_be_qemu_keydown(u16 scancode) {
                 case KEY_P: send_char('p'); break;
                 
                 case KEY_RBRACKET: send_char('^'); break;
-                case KEY_SEMICOLON: send_char('$'); break;
+                case KEY_M: send_char('$'); break;
 
-                case KEY_A: send_char('a'); break;
+                case KEY_Q: send_char('a'); break;
                 case KEY_S: send_char('s'); break;
                 case KEY_D: send_char('d'); break;
                 case KEY_F: send_char('f'); break;
@@ -92,14 +92,14 @@ void nl_be_qemu_keydown(u16 scancode) {
                 //case KEY_QUOTE: send_char('ù'); break;
                 //case KEY_INTLBSLASH: send_char('µ'); break;
 
-                case KEY_Z: send_char('z'); break;
+                case KEY_W: send_char('z'); break;
                 case KEY_X: send_char('x'); break;
                 case KEY_C: send_char('c'); break;
                 case KEY_V: send_char('v'); break;
                 case KEY_B: send_char('b'); break;
                 case KEY_N: send_char('n'); break;
-                case KEY_M: send_char('m'); break;
-                
+                case KEY_SEMICOLON: send_char('m'); break;
+
                 case KEY_COMMA: send_char(','); break;
                 case KEY_PERIOD: send_char(';'); break;
                 case KEY_SLASH: send_char(':'); break;
@@ -126,8 +126,8 @@ void nl_be_qemu_keydown(u16 scancode) {
                 //case KEY_LBRACKET: send_char('°'); break;
                 case KEY_MINUS: send_char('_'); break;
 
-                case KEY_Q: send_char('Q'); break;
-                case KEY_W: send_char('W'); break;
+                case KEY_A: send_char('Q'); break;
+                case KEY_Z: send_char('W'); break;
                 case KEY_E: send_char('E'); break;
                 case KEY_R: send_char('R'); break;
                 case KEY_T: send_char('T'); break;
@@ -138,9 +138,9 @@ void nl_be_qemu_keydown(u16 scancode) {
                 case KEY_P: send_char('P'); break;
                 
                 //case KEY_RBRACKET: send_char('¨'); break;
-                case KEY_SEMICOLON: send_char('*'); break;
+                case KEY_M: send_char('*'); break;
 
-                case KEY_A: send_char('A'); break;
+                case KEY_Q: send_char('A'); break;
                 case KEY_S: send_char('S'); break;
                 case KEY_D: send_char('D'); break;
                 case KEY_F: send_char('F'); break;
@@ -153,13 +153,13 @@ void nl_be_qemu_keydown(u16 scancode) {
                 case KEY_QUOTE: send_char('%'); break;
                 //case KEY_INTLBSLASH: send_char('£'); break;
 
-                case KEY_Z: send_char('Z'); break;
+                case KEY_W: send_char('Z'); break;
                 case KEY_X: send_char('X'); break;
                 case KEY_C: send_char('C'); break;
                 case KEY_V: send_char('V'); break;
                 case KEY_B: send_char('B'); break;
                 case KEY_N: send_char('N'); break;
-                case KEY_M: send_char('M'); break;
+                case KEY_SEMICOLON: send_char('M'); break;
                 
                 case KEY_COMMA: send_char('?'); break;
                 case KEY_PERIOD: send_char('.'); break;

@@ -5,7 +5,7 @@
 #define MEM_ENTRY_BASE 0x00080000
 #define MEM_ENTRIES    0xffff
 
-#define KHEAP_BASE     0x00100000
+#define KHEAP_BASE     0x00200000
 #define KHEAP_LIMIT    0x01000000
 
 typedef struct {

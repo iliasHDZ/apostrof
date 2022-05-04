@@ -8,6 +8,8 @@
         "random": "c",
         "syscall.h": "c",
         "vga.h": "c",
-        "task.h": "c"
+        "task.h": "c",
+        "drive.h": "c",
+        "apofs.h": "c"
     }
 }

@@ -1,10 +1,10 @@
 #pragma once
 
 #include "../utils.h"
-#include "../drv/storage.h"
+#include "../drv/drive.h"
 
 typedef struct {
-    storage_dev* device;
+    drive* device;
 
     u32 bitmap_base;
     u32 table_base;
@@ -25,7 +25,7 @@ typedef struct {
 
 extern apo_fs* current_root;
 
-apo_fs* apofs_openDevice(storage_dev* d);
+apo_fs* apofs_openDevice(drive* d);
 
 u16 apofs_lastError();
 

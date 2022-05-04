@@ -54,13 +54,13 @@ u16 apofs_lastError() {
 #define APOFS_FILE_NOT_PRESENT      0x0008
 #define APOFS_NOT_A_DIR             0x0009
 
-apo_fs* apofs_openDevice(storage_dev* d) {
+apo_fs* apofs_openDevice(drive* d) {
     if (d == 0) return 0;
     if (d->size < 1) return 0;
 
     apofs_header* bootsec = kmalloc(512);
 
-    if (storage_read(d, 0, 1, (u8*)bootsec) != 0) {
+    if (drive_read(d, 0, 1, (u8*)bootsec) != 0) {
         kfree(bootsec);
         apofs_last_error = APOFS_READ_FAIL;
         return 0;
@@ -99,7 +99,7 @@ apo_fs* apofs_openDevice(storage_dev* d) {
     u32 bitmap_size = bootsec->table_base - bootsec->bitmap_base;
     u8* bitmap      = kmalloc(bitmap_size);
 
-    if (storage_read(d, bootsec->bitmap_base, bitmap_size, bitmap) != 0) {
+    if (drive_read(d, bootsec->bitmap_base, bitmap_size, bitmap) != 0) {
         kfree(bootsec);
         kfree(bitmap);
         apofs_last_error = APOFS_READ_FAIL;
@@ -156,7 +156,7 @@ u8 apofs_getFileName(apo_fs* fs, u32 file_id, char* name_out, int len_out) {
     
     apofs_std_filedesc* file = kmalloc(512);
 
-    if (storage_read(fs->device, sector, 1, (u8*)file) != 0) {
+    if (drive_read(fs->device, sector, 1, (u8*)file) != 0) {
         kfree(file);
         apofs_last_error = APOFS_READ_FAIL;
         return 1;
@@ -188,7 +188,7 @@ u8 apofs_getFileInfo(apo_fs* fs, u32 file_id, apofs_fileinfo* info_out) {
     
     apofs_std_filedesc* file = kmalloc(512);
 
-    if (storage_read(fs->device, sector, 1, (u8*)file) != 0) {
+    if (drive_read(fs->device, sector, 1, (u8*)file) != 0) {
         kfree(file);
         apofs_last_error = APOFS_READ_FAIL;
         return 1;
@@ -226,7 +226,7 @@ u32 apofs_getChild(apo_fs* fs, u32 file_id, const char* child_name) {
     for (int s = 0; s < fs->desc_size; s++) {
         int sector = (file_id - 1) * fs->desc_size + fs->table_base + s;
 
-        if (storage_read(fs->device, sector, 1, file) != 0) {
+        if (drive_read(fs->device, sector, 1, file) != 0) {
             apofs_last_error = APOFS_READ_FAIL;
             return 0;
         }
@@ -353,7 +353,7 @@ u32 apofs_getFileSize(apo_fs* fs, u32 file_id) {
     for (int s = 0; s < fs->desc_size; s++) {
         int sector = (file_id - 1) * fs->desc_size + fs->table_base + s;
 
-        if (storage_read(fs->device, sector, 1, file) != 0) {
+        if (drive_read(fs->device, sector, 1, file) != 0) {
             apofs_last_error = APOFS_READ_FAIL;
             return 0;
         }
@@ -405,7 +405,7 @@ u32 apofs_read(apo_fs* fs, u32 file_id, u8* dst, u32 offset, u32 count) {
 
     int sector = (file_id - 1) * fs->desc_size + fs->table_base;
 
-    if (storage_read(fs->device, sector, fs->desc_size, file) != 0) {
+    if (drive_read(fs->device, sector, fs->desc_size, file) != 0) {
         apofs_last_error = APOFS_READ_FAIL;
         return 0;
     }
@@ -446,7 +446,7 @@ u32 apofs_read(apo_fs* fs, u32 file_id, u8* dst, u32 offset, u32 count) {
         for (u32 j = read_base; j < read_limit; j++) {
             u32 read_begin, read_end;
 
-            if (storage_read(fs->device, base + j, 1, content_sector) != 0) {
+            if (drive_read(fs->device, base + j, 1, content_sector) != 0) {
                 apofs_last_error = APOFS_READ_FAIL;
                 return 0;
             }
@@ -481,16 +481,17 @@ void apofs_init() {
 
     u32 current_disk_type = *(u32*)0x7C0A;
 
-    storage_dev* d;
-    for (int i = 0; (d = storage_getDevice(i)) != 0; i++) {
+    drive* d;
+    for (int i = 0; (d = drive_getDevice(i)) != 0; i++) {
         if (d->size < 1) continue;
-        if (storage_read(d, 0, 1, sector_buffer) != 0) continue;
+        if (drive_read(d, 0, 1, sector_buffer) != 0) continue;
         if (*(u32*)(sector_buffer + 0x0A) != current_disk_type) continue;
 
         current_root = apofs_openDevice(d);
         if (current_root == 0) continue;
     }
 
-    if (current_root == 0) error("Cannot find the current boot medium."
-                                 " Please ensure that the boot medium is a CDROM inserted into an IDE drive.");
+    if (current_root == 0)
+        error("Cannot find the current boot medium."
+              " Please ensure that the boot medium is a CDROM inserted into an IDE drive.");
 }

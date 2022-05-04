@@ -3,6 +3,7 @@
 #include "../int/isr.h"
 #include "../io.h"
 #include "../error.h"
+#include "../vga.h"
 
 #include "kb_layout/nl_be_qemu.h"
 

@@ -9,8 +9,6 @@ u32 vmem_bitmapCount = 0;
 vmem* current_vmem   = 0;
 vmem* kernel_memory  = 0;
 
-#define DEVIDE_CEIL(a, b) a / b + (a % b != 0)
-
 vmem* vmem_current() {
     return current_vmem;
 }
@@ -198,8 +196,8 @@ vmem* vmem_createTaskMemory(u32 code_size, u32 stack_size) {
     vmem* virmem = vmem_cloneKernelMemory();
     if (virmem == 0) return 0;
 
-    u32 code_pages  = DEVIDE_CEIL(code_size, 4096);
-    u32 stack_pages = DEVIDE_CEIL(stack_size, 4096);
+    u32 code_pages  = DIVIDE_CEIL(code_size, 4096);
+    u32 stack_pages = DIVIDE_CEIL(stack_size, 4096);
 
     u32 code_base_page  = VMEM_TASK_CODE  >> 12;
     u32 stack_base_page = VMEM_TASK_STACK >> 12;
@@ -237,7 +235,7 @@ void vmem_freeMemory(vmem* virmem) {
     }
 
     for (int i = 0; i < 1024; i++) {
-        if (i >= DEVIDE_CEIL(VMEM_KERNEL_PAGES, 1024) && vmem_tablePresent(virmem, i))
+        if (i >= DIVIDE_CEIL(VMEM_KERNEL_PAGES, 1024) && vmem_tablePresent(virmem, i))
             kfree(vmem_getTable(virmem, i));
     }
 

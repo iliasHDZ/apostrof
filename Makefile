@@ -1,13 +1,13 @@
 PROJECT = os-test
 
-IMG_OUT = dist/os-test.img
+ISO_OUT = dist/apostrof.iso
 
 LINKER 	= linker.ld
 
 SRC_DIR   = src
 BUILD_DIR = build
 
-SRC_ASM = $(SRC_DIR)/boot/main.asm $(SRC_DIR)/kernel/int/isr_a.asm  $(SRC_DIR)/kernel/cpu/cpuid_a.asm #$(shell find $(SRC_DIR) -name *.asm)
+SRC_ASM = $(SRC_DIR)/boot/header.asm $(SRC_DIR)/boot/main.asm $(SRC_DIR)/kernel/int/isr_a.asm  $(SRC_DIR)/kernel/cpu/cpuid_a.asm #$(shell find $(SRC_DIR) -name *.asm)
 SRC_C   = $(shell find $(SRC_DIR) -name *.c)
 
 HEADERS = $(shell find $(SRC_DIR) -name *.h)
@@ -18,8 +18,8 @@ OBJ_C   = $(patsubst $(SRC_DIR)/%.c,   $(BUILD_DIR)/%.o, $(SRC_C))
 BOOT_ASM = bootsector.asm
 
 BOOT_BIN   = dist/bootsector.bin
-KERNEL_BIN = dist/kernel.bin
 ROM_BIN    = dist/rom_file.bin
+KERNEL_BIN = iso/boot/kernel.bin
 
 FS_DATA = fs_data.bin
 
@@ -32,7 +32,7 @@ TEST_TASK_OUT = fs/test/task
 ASM = nasm
 CC  = gcc
 
-all: $(IMG_OUT)
+all: $(ISO_OUT)
 
 $(BOOT_BIN): $(BOOT_ASM)
 	mkdir -p $(dir $(BOOT_BIN)) && \
@@ -57,13 +57,14 @@ $(TEST_APP_OUT): $(TEST_APP_ASM)
 $(TEST_TASK_OUT): $(TEST_TASK_ASM)
 	$(ASM) -f bin $(TEST_TASK_ASM) -o $(TEST_TASK_OUT)
 
-$(IMG_OUT): $(BOOT_BIN) $(KERNEL_BIN) $(TEST_APP_OUT) $(TEST_TASK_OUT)
-	cat $(BOOT_BIN) $(KERNEL_BIN) > $(ROM_BIN)
-	cd apolib && make && cd ..
-	cd apps/test_app && make && cd ../..
-	cd apps/test_app2 && make && cd ../..
-	cd apps/terminal && make && cd ../..
-	node ./fs_converter.js
+$(ISO_OUT): $(BOOT_BIN) $(KERNEL_BIN) $(TEST_APP_OUT) $(TEST_TASK_OUT)
+	grub-mkrescue /usr/lib/grub/i386-pc -o $(ISO_OUT) ./iso
+#	cat $(BOOT_BIN) $(KERNEL_BIN) > $(ROM_BIN)
+#	cd apolib && make && cd ..
+#	cd apps/test_app && make && cd ../..
+#	cd apps/test_app2 && make && cd ../..
+#	cd apps/terminal && make && cd ../..
+#	node ./fs_converter.js
 
 clean:
 	rm -rf $(BUILD_DIR) $(KERNEL_BOOT) dist

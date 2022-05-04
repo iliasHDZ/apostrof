@@ -6,10 +6,10 @@
 #include "../vga.h"
 
 #include "timer.h"
-#include "storage.h"
+#include "drive.h"
 
-extern u8 storage_addIDEDevice(char* model, u32 size, u8 atapi, u8 present, u8 channel,
-                               u8 drive, u16 signature, u16 capabilities, u32 command_sets);
+extern u8 drive_addIDEDevice(char* model, u32 size, u8 atapi, u8 present, u8 channel,
+                               u8 drv, u16 signature, u16 capabilities, u32 command_sets);
 
 typedef struct {
     u16 base;
@@ -175,6 +175,13 @@ void ide_addDevice(u8 present, u8 ch, u8 drv, u8 type, u8* id_data) {
     u32 command_sets = offset(u32, id_data, ATA_IDENT_COMMANDSETS);
     u32 size;
 
+    dbg_hexDump(id_data, 512);
+    dbg_write("\n");
+    dbg_writeDWord(*(u32*)(id_data + 120));
+    dbg_write("\n");
+    dbg_writeDWord(*(u32*)(id_data + 200));
+    dbg_write("\n");
+
     char model[40];
 
     if (command_sets & (1 << 26))
@@ -187,7 +194,7 @@ void ide_addDevice(u8 present, u8 ch, u8 drv, u8 type, u8* id_data) {
         model[i + 1] = id_data[ATA_IDENT_MODEL + i];
     }
 
-    storage_addIDEDevice(
+    drive_addIDEDevice(
         model,
         size,
         type,
@@ -249,6 +256,10 @@ void ide_search(pci_device* d) {
                 if (!(s & ATA_SR_BSY) && (s & ATA_SR_DRQ)) break;
             }
 
+            dbg_write("ERROR: ");
+            dbg_writeDWord(err);
+            dbg_write("\n");
+
             if (err != 0) {
                 u8 cl = ide_read(c, ATA_REG_LBA1);
                 u8 ch = ide_read(c, ATA_REG_LBA2);
@@ -266,6 +277,9 @@ void ide_search(pci_device* d) {
 
             for (int i = 0; i < 128; i++)
                 ((u32*)id_data)[i] = ide_readl(c, ATA_REG_DATA);
+
+            dbg_hexDump(id_data, 512);
+            dbg_write("\n");
 
             ide_addDevice(1, c, d, type, id_data);
         }

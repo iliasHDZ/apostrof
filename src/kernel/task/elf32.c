@@ -25,7 +25,7 @@
 #define SHF_EXECINSTR 0x4
 #define SHF_MASKPROC  0xf0000000
 
-#define DEVIDE_CEIL(a, b) a / b + (a % b != 0)
+#define DIVIDE_CEIL(a, b) a / b + (a % b != 0)
 
 int elf32_load(apo_fs* fs, const char* path, task* task, u32 stack_size, char** error) {
     if (fs == 0 || path == 0) return 0;
@@ -145,7 +145,7 @@ int elf32_load(apo_fs* fs, const char* path, task* task, u32 stack_size, char** 
         }
     }
 
-    u32 stack_pages = DEVIDE_CEIL(stack_size, 4096);
+    u32 stack_pages = DIVIDE_CEIL(stack_size, 4096);
     u32 stack_base_page = VMEM_TASK_STACK >> 12;
     
     for (int i = 0; i < stack_pages; i++)
