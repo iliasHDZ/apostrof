@@ -1,4 +1,4 @@
-APP_OUT = ./../../fs/terminal
+APP_OUT = ./../../iso/usr/bin/terminal
 
 LINKER 	= linker.ld
 
@@ -24,7 +24,7 @@ $(OBJ_ASM): $(BUILD_DIR)/%.o : $(SRC_DIR)/%.asm
 
 $(OBJ_C): $(BUILD_DIR)/%.o : $(SRC_DIR)/%.c $(HEADERS)
 	mkdir -p $(dir $@) && \
-	$(CC) -I../../apolib/include -fno-pie -c -m32 -ffreestanding $(patsubst $(BUILD_DIR)/%.o, $(SRC_DIR)/%.c, $@) -o $@
+	$(CC) -g -I../../apolib/include -fno-pie -c -m32 -ffreestanding $(patsubst $(BUILD_DIR)/%.o, $(SRC_DIR)/%.c, $@) -o $@
 
 $(APP_OUT): $(OBJ_ASM) $(OBJ_C) $(LINKER)
 	mkdir -p $(dir $(APP_OUT)) && \

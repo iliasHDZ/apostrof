@@ -269,7 +269,7 @@ void vga_hexDump(u8* buffer, int size) {
     int line = size / 16 + (size % 16 != 0);
 
     for (int i = 0; i < line; i++) {
-        vga_writeDWord(buffer + i * 16);
+        vga_writeDWord(i * 16);
         vga_writeText("  ");
 
         int a = 0;
@@ -285,8 +285,13 @@ void vga_hexDump(u8* buffer, int size) {
 
         vga_writeChar(' ');
 
-        for (int b = i * 16; b < (i + 1) * 16 && b < size; b++)
-            vga_writeChar(buffer[b]);
+        for (int b = i * 16; b < (i + 1) * 16 && b < size; b++) {
+            char c = buffer[b];
+            if (c >= 32 && c < 255)
+                vga_writeChar(c);
+            else
+                vga_writeChar('.');
+        }
 
         vga_writeChar('\n');
     }

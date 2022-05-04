@@ -49,7 +49,7 @@ extern u32 task_next_ebp;
 
 void task_init();
 
-task* task_create(apo_fs* fs, const char* path);
+task* task_create(const char* path);
 
 task* task_get(u32 pid);
 
@@ -61,7 +61,7 @@ fd* task_createStdStream(task* task, int type);
 
 int task_attach(task* task, fd* fd);
 
-fd* task_open(apo_fs* fs, const char* path, int flags);
+fd* task_open(const char* path, int flags);
 
 u32 task_read(fd* fd, char* buffer, u32 size);
 

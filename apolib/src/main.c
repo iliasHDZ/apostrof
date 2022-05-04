@@ -11,11 +11,6 @@ void __apo_entry() {
     exit(err);
 }
 
-unsigned int syscall(unsigned int eax, unsigned int ebx, unsigned int ecx, unsigned int edx) {
-    asm("int $0x1C;" : "=a" (eax) : "a" (eax), "b" (ebx), "c" (ecx), "d" (edx));
-    return eax;
-}
-
 void exit(int code) {
     syscall(0x01, code, 0, 0);
 }

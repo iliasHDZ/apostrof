@@ -129,12 +129,19 @@ u8 kmm_addEntry(u32 base, u32 limit) {
 u8 kmm_removeEntry(u32 base) {
     int e = 0;
 
+    u8 found = 0;
+
     while (entries[e].base != 0) {
         if (e >= MEM_ENTRIES) return 0;
         if (e >= entry_count) return 0;
-        if (entries[e].base == base) break;
+        if (entries[e].base == base) {
+            found = 1;
+            break;
+        }
         e++;
     }
+
+    if (!found) return 0;
 
     for (int i = e; i < entry_count - 1; i++)
         entries[i] = entries[i + 1];
@@ -236,9 +243,13 @@ void* kmalloc_pa(u32 size) {
     if (aligned_limit < KHEAP_LIMIT && (KHEAP_LIMIT - aligned_limit) >= size)
         if (!kmm_addEntry(aligned_limit, aligned_limit + size)) return (void*)0;
         else return (void*)aligned_limit;
-    else
+    else {
+        dbg_write("kmalloc_pa: out of memory\n");
         return (void*)0;
+    }
 }
+
+int __stopit = 0;
 
 void* kmalloc(u32 size) {
     u32 last_limit = KHEAP_BASE;
@@ -256,8 +267,10 @@ void* kmalloc(u32 size) {
     if ((KHEAP_LIMIT - last_limit) >= size)
         if (!kmm_addEntry(last_limit, last_limit + size)) return (void*)0;
         else return (void*)last_limit;
-    else
+    else {
+        dbg_write("kmalloc: out of memory\n");
         return (void*)0;
+    }
 }
 
 void kfree(void* block) {

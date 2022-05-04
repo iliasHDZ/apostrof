@@ -70,10 +70,10 @@ DATA_SEG equ gdt_data - gdt_start
 
 section .bss
 stack_bottom:
-    resb 4096 * 16
+    resb 4096 * 32
 stack_top:
 
 section .bss
 init_stack_bottom:
-    resb 4096 * 16
+    resb 4096 * 32
 init_stack_top:

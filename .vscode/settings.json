@@ -10,6 +10,11 @@
         "vga.h": "c",
         "task.h": "c",
         "drive.h": "c",
-        "apofs.h": "c"
+        "apofs.h": "c",
+        "array": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "utility": "cpp",
+        "apostrof.h": "c"
     }
 }

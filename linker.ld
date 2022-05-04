@@ -12,5 +12,9 @@ SECTIONS
     .text :
     {
         *(.text)
+        *(.rodata)
+        *(.data)
+        *(.eh_frame)
+        *(.bss)
     }
 }

@@ -1,4 +1,4 @@
-APP_OUT = ./../../fs/test_app
+APP_OUT = ./../../iso/test_app
 
 LINKER 	= linker.ld
 

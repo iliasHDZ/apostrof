@@ -46,6 +46,15 @@
 #define IDE_ATA        0x00
 #define IDE_ATAPI      0x01
 
+#define ATA_ER_BBK      0x80
+#define ATA_ER_UNC      0x40
+#define ATA_ER_MC       0x20
+#define ATA_ER_IDNF     0x10
+#define ATA_ER_MCR      0x08
+#define ATA_ER_ABRT     0x04
+#define ATA_ER_TK0NF    0x02
+#define ATA_ER_AMNF     0x01
+
 #define ATA_IDENT_DEVICETYPE   0
 #define ATA_IDENT_CYLINDERS    2
 #define ATA_IDENT_HEADS        6

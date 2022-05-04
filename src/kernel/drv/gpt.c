@@ -14,18 +14,12 @@ u8 gpt_read(drive* d) {
     u8 header_sector[512];
     gpt_header* header = (gpt_header*)header_sector;
 
-    dbg_write("Reading GPT header...\n");
-
     if (drive_read(d, 1, 1, &header_sector) != 0)
         return 0;
-
-    dbg_write("You know!\n");
 
     for (int i = 0; i < 8; i++)
         if (header->signature[i] != gpt_signature[i])
             return 0;
-
-    dbg_write("Signature correct!\n");
 
     u32 entries_start = header->gpt_lba;
     u32 entries_count = header->pe_count;

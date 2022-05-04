@@ -1,8 +1,20 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 unsigned int syscall(unsigned int eax, unsigned int ebx, unsigned int ecx, unsigned int edx);
 
 void exit(int code);
+
+// UTIL
+
+void* memcpy(void* dst, const void* src, unsigned int size);
+
+void* memset(void* ptr, int value, unsigned int size);
+
+unsigned int strlen(const char* str);
 
 // FILE DESCRIPTORS
 
@@ -60,3 +72,25 @@ unsigned int process_createWithStdout(const char* path, unsigned int* fd);
 unsigned int video_get(int global);
 
 unsigned int video_set(int global, unsigned int value);
+
+// DEBUG
+
+void dbg_write(const char *s);
+
+void dbg_writeLen(const char *s, unsigned int len);
+
+void dbg_writeChar(char s);
+
+void dbg_writeByte(unsigned char value);
+
+void dbg_writeWord(unsigned short value);
+
+void dbg_writeDWord(unsigned int value);
+
+void dbg_writeInteger(int value);
+
+void dbg_hexDump(unsigned char* buffer, int size);
+
+#ifdef __cplusplus
+}
+#endif

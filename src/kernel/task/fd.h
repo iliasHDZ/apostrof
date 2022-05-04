@@ -25,10 +25,10 @@ typedef struct fd {
 
     struct fd* pipe;
 
-    u8 cursor; // Buffer-Only
+    u32 cursor; // Buffer-Only
 } fd;
 
-fd* void_stream;
+extern fd* void_stream;
 
 fd* fd_createBuffer(char* buffer, u32 buffer_size, u8 writable);
 

@@ -168,11 +168,11 @@ void isr_handler() {
 
     if (isr_handlers[r->int_no] != 0) {
         isr_handlers[r->int_no](r);
-        task_switch();
         return;
     }
-
-    task_exception(r->int_no, r->err_code);
+    
+    if (r->int_no > 15)
+        task_switch();
 
     vga_setColor(VGA_RED, VGA_BLACK);
     vga_writeText("\nERROR: ");

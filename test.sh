@@ -1,2 +1,2 @@
-qemu-system-i386 -debugcon stdio -m 4G -vga std -drive id=disk,file=image.img,format=raw,if=none -device ide-hd,drive=disk,bus=ide.0 -cdrom dist/apostrof.iso #-drive format=raw,file=dist/apostrof.iso
+qemu-system-i386 -debugcon stdio -m 4G -vga std -drive id=disk,file=image.img,format=raw,if=none -device ide-hd,drive=disk,bus=ide.0 -drive format=raw,file=dist/apostrof.iso
 # qemu-system-i386 -debugcon stdio -m 4G -vga std -cdrom dist/apostrof.iso -drive id=disk,file=image.img,format=raw,if=none -device ide-hd,drive=disk,bus=ide.0

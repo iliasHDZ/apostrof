@@ -36,7 +36,8 @@ vmem_table* vmem_allocTable() {
     vmem_table* table = kmalloc_pa(sizeof(vmem_table));
     if (table == 0) return 0;
 
-    memset(table, 0, sizeof(vmem_table));
+    for (int i = 0; i < 1024; i++)
+        table->pages[i].present = 0;
 
     return table;
 }
@@ -158,7 +159,7 @@ vmem* vmem_createMemory() {
     vmem* virmem = kmalloc_pa(sizeof(vmem));
     if (virmem == 0) return 0;
 
-    memset(virmem, 0, sizeof(virmem));
+    memset(virmem, 0, sizeof(vmem));
     return virmem;
 }
 
@@ -178,6 +179,13 @@ vmem* vmem_cloneMemory(vmem* src) {
     for (int i = 0; i < 1024; i++)
         vmem_setTable(virmem, i, vmem_cloneTable(src, i));
     
+    return virmem;
+}
+
+vmem* vmem_cloneMemoryDirect(vmem* src) {
+    vmem* virmem = vmem_createMemory();
+
+    memcpy(virmem, src, sizeof(vmem));
     return virmem;
 }
 
@@ -257,10 +265,7 @@ void vmem_enable() {
 void vmem_init() {
     vmem_initBitmap(1048576);
 
-    kernel_memory = vmem_createMemory();
-
-    for (u32 i = 0; i < VMEM_KERNEL_PAGES; i++)
-        vmem_mapPage(kernel_memory, i * 4096, i * 4096, VMEM_PRESENT | VMEM_KERNEL);
+    kernel_memory = vmem_cloneKernelMemory();
 
     vmem_switchMemory(kernel_memory);
     vmem_enable();

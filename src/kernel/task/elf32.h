@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../utils.h"
-
 #include "task.h"
 
 #define EI_NIDENT 16
@@ -36,4 +35,4 @@ typedef struct {
     u32 sh_entsize;
 } __attribute__((packed)) elf32_shdr;
 
-int elf32_load(apo_fs* fs, const char* path, task* task, u32 stack_size, char** error);
+int elf32_load(const char* path, task* task, u32 stack_size, char** error);

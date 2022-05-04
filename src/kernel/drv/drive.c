@@ -107,11 +107,6 @@ void drive_addPartition(char* name, drive* parent, u32 start_sector, u32 end_sec
 
     if (drive_read(p, 0, 1, sector) == 1)
         return;
-
-    dbg_writeChar('\n');
-    dbg_writeDWord(p->start_sector);
-    dbg_writeChar('\n');
-    dbg_hexDump(sector, 512);
 }
 
 void drive_init() {

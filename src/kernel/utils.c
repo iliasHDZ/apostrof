@@ -25,3 +25,10 @@ u8 cmpstr(const char* str1, const char* str2) {
     if (str1[i] != str2[i]) return 0;
     return 1;
 }
+
+u32 strlen(const char* str) {
+    u32 i = 0;
+    while(str[i] != 0) i++;
+
+    return i;
+}

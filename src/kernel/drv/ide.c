@@ -26,19 +26,19 @@ void ide_write(u8 ch, u8 reg, u8 data) {
     ide_channel_regs* chr = &channels[ch];
 
     if (reg > 0x07 && reg < 0x0C)
-        ide_write(ch, ATA_REG_CONTROL, 0x80 | channels[ch].nIEN);
+        ide_write(ch, ATA_REG_CONTROL, 0x80 | chr->nIEN);
     
     if (reg < 0x08)
-        outb(channels[ch].base  + reg - 0x00, data);
+        outb(chr->base  + reg - 0x00, data);
     else if (reg < 0x0C)
-        outb(channels[ch].base  + reg - 0x06, data);
+        outb(chr->base  + reg - 0x06, data);
     else if (reg < 0x0E)
-        outb(channels[ch].ctrl  + reg - 0x0A, data);
+        outb(chr->ctrl  + reg - 0x0A, data);
     else if (reg < 0x16)
-        outb(channels[ch].bmide + reg - 0x0E, data);
+        outb(chr->bmide + reg - 0x0E, data);
     
     if (reg > 0x07 && reg < 0x0C)
-        ide_write(ch, ATA_REG_CONTROL, channels[ch].nIEN);
+        ide_write(ch, ATA_REG_CONTROL, chr->nIEN);
 }
 
 u8 ide_read(u8 ch, u8 reg) {
@@ -175,13 +175,6 @@ void ide_addDevice(u8 present, u8 ch, u8 drv, u8 type, u8* id_data) {
     u32 command_sets = offset(u32, id_data, ATA_IDENT_COMMANDSETS);
     u32 size;
 
-    dbg_hexDump(id_data, 512);
-    dbg_write("\n");
-    dbg_writeDWord(*(u32*)(id_data + 120));
-    dbg_write("\n");
-    dbg_writeDWord(*(u32*)(id_data + 200));
-    dbg_write("\n");
-
     char model[40];
 
     if (command_sets & (1 << 26))
@@ -217,17 +210,17 @@ void ide_search(pci_device* d) {
     u32 BAR4 = pci_BAR4(d);
 
     channels[0] = (ide_channel_regs) {
-        BAR0 ? BAR0 & ~0x03 : 0x1F0,
-        BAR1 ? BAR1 & ~0x03 : 0x3F6,
+        BAR0 ? BAR0 & ~(u32)0x03 : 0x1F0,
+        BAR1 ? BAR1 & ~(u32)0x03 : 0x3F6,
 
-        (BAR4 & ~0x03) + 0
+        (BAR4 & ~(u32)0x03) + 0
     };
 
     channels[1] = (ide_channel_regs) {
-        BAR2 ? BAR2 & ~0x03 : 0x170,
-        BAR3 ? BAR3 & ~0x03 : 0x376,
+        BAR2 ? BAR2 & ~(u32)0x03 : 0x170,
+        BAR3 ? BAR3 & ~(u32)0x03 : 0x376,
 
-        (BAR4 & ~0x03) + 0
+        (BAR4 & ~(u32)0x03) + 8
     };
 
     ide_write(0, ATA_REG_CONTROL, 2);
@@ -256,10 +249,6 @@ void ide_search(pci_device* d) {
                 if (!(s & ATA_SR_BSY) && (s & ATA_SR_DRQ)) break;
             }
 
-            dbg_write("ERROR: ");
-            dbg_writeDWord(err);
-            dbg_write("\n");
-
             if (err != 0) {
                 u8 cl = ide_read(c, ATA_REG_LBA1);
                 u8 ch = ide_read(c, ATA_REG_LBA2);
@@ -277,9 +266,6 @@ void ide_search(pci_device* d) {
 
             for (int i = 0; i < 128; i++)
                 ((u32*)id_data)[i] = ide_readl(c, ATA_REG_DATA);
-
-            dbg_hexDump(id_data, 512);
-            dbg_write("\n");
 
             ide_addDevice(1, c, d, type, id_data);
         }

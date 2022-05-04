@@ -70,6 +70,8 @@ void vmem_freePage(vmem* virmem, u32 page_addr);
 
 vmem* vmem_createMemory();
 
+vmem* vmem_cloneKernelMemory();
+
 void vmem_freeMemory(vmem* virmem);
 
 void vmem_switchMemory(vmem* virmem);
