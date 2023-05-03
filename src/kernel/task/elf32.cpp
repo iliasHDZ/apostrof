@@ -1,12 +1,11 @@
 extern "C" {
-#include "elf32.h"
 #include "../vmem.h"
-
 #include "../vga.h"
 }
 
 #include "../utils.hpp"
 #include "../fs/filesystem.hpp"
+#include "elf32.hpp"
 
 #include "../kmm.hpp"
 
@@ -34,9 +33,9 @@ using namespace apo;
 #define SHF_EXECINSTR 0x4
 #define SHF_MASKPROC  0xf0000000
 
-extern int __stopit;
+using namespace apo;
 
-int elf32_load(const char* path, task* task, u32 stack_size, char** error) {
+int apo::elf32_load(const char* path, Task* task, u32 stack_size, char** error) {
     if (path == 0) return 0;
 
     File file = Filesystem::current()->getFile(path);
@@ -44,8 +43,6 @@ int elf32_load(const char* path, task* task, u32 stack_size, char** error) {
         *error = "Cannot find file";
         return 0;
     }
-
-    __stopit = 1;
 
     u8* buffer = new u8[file.size];
 
@@ -156,13 +153,13 @@ int elf32_load(const char* path, task* task, u32 stack_size, char** error) {
     for (int i = 0; i < stack_pages; i++)
         vmem_allocPage(mem, (stack_base_page - i) << 12, VMEM_PRESENT | VMEM_WRITABLE | VMEM_USER);
 
-    task->mem     = mem;
+    task->memory = mem;
 
-    task->entry   = header->e_entry;
-    task->stack   = VMEM_TASK_STACK;
-    task->heap    = DIVIDE_CEIL(heap_address, 4096) << 12;
+    task->entry = header->e_entry;
+    task->stack = VMEM_TASK_STACK;
+    task->heap  = DIVIDE_CEIL(heap_address, 4096) << 12;
 
-    task->heap_limit = task->heap;
+    task->heap_brk = task->heap;
 
     kfree(buffer);
     return 1;

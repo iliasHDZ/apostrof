@@ -1,1 +1,0 @@
-Ok, you are wondering what the hell ./fs is, right? Well, this is a folder that will get converted into the Apostrof img file in the form of a file system. And that's pretty much it!

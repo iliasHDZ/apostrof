@@ -3,7 +3,6 @@
 #include "../vga.h"
 #include "../int/isr.h"
 #include "../io.h"
-#include "../task/task.h"
 
 u32 timer_counter = 0;
 

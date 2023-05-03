@@ -1,0 +1,1 @@
+cmake -S . -B ./bin -D CMAKE_C_COMPILER=i686-elf-gcc -D CMAKE_CXX_COMPILER=i686-elf-g++

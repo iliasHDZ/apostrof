@@ -52,10 +52,6 @@ int array_get(ARRAY* a, u32 index, void* dst);
 
 void array_free(ARRAY* a);
 
-void* memcpy(void* dst, const void* src, u32 size);
-
-void* memset(void* ptr, int value, u32 size);
-
 void* kmalloc(u32 size);
 
 void* kmalloc_pa(u32 size);

@@ -13,7 +13,6 @@ extern "C" {
 
 #include "fs/apofs.h"
 
-#include "task/task.h"
 #include "task/syscall.h"
 
 #include "kmm.h"
@@ -23,6 +22,7 @@ extern "C" {
 #include "dbg.h"
 }
 
+#include "task/task.hpp"
 #include "shell/shell.hpp"
 #include "fs/filesystem.hpp"
 
@@ -96,7 +96,7 @@ extern "C" void kernel_main(u32 stack) {
 
     dbg_write("Initializing multitasking... ");
     syscall_init();
-    task_init();
+    Task::init();
     dbg_write("OK\n");
 
     /*vga_writeText("Welcome to ");
@@ -106,10 +106,10 @@ extern "C" void kernel_main(u32 stack) {
 
     shell_init();*/
 
-    task* t = task_create("/usr/bin/terminal");
+    Task* task = Task::create("/usr/bin/terminal");
 
-    if (t != 0)
-        task_resume(t);
+    if (task != 0)
+        task->resume();
 
     asm("sti");
 

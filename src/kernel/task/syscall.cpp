@@ -2,60 +2,63 @@ extern "C" {
 #include "syscall.h"
 #include "../int/isr.h"
 #include "../vga.h"
-#include "task.h"
 }
 
+#include "task.hpp"
+
+using namespace apo;
+
 u32 syscall_exec(u32 a, u32 b, u32 c, u32 d) {
-    task* tsk;
+    Task* task;
     fd* fdn;
 
     switch (a)
     {
     case 0x01: // exit
-        task_close(task_getCurrent(), b); break;
+        Task::current()->close(b); break;
     
     case 0x10: // read
-        return task_read((fd*)b, (char*)c, d);
+        return Task::read((fd*)b, (char*)c, d);
     case 0x11: // write
-        return task_write((fd*)b, (char*)c, d);
+        return Task::write((fd*)b, (char*)c, d);
     case 0x12: // seek
-        return task_seek((fd*)b, (int)c, (int)d);
+        return Task::seek((fd*)b, (int)c, (int)d);
     case 0x13: // tell
-        return task_tell((fd*)b);
+        return Task::tell((fd*)b);
 
     case 0x30: // malloc
-        return (u32)task_malloc(b);
+        return (u32)Task::malloc(b);
     case 0x31: // free
-        task_free((void*)b); break;
+        Task::free((void*)b); break;
     case 0x32: // realloc
-        return (u32)task_realloc((void*)b, c);
+        return (u32)Task::realloc((void*)b, c);
     
     case 0x40: // process_create
-        return task_create((const char*)b)->pid;
+        return Task::create((const char*)b)->pid;
     case 0x41: // process_getStdStream
-        tsk = task_get(b);
-        if (tsk == 0) break;
+        task = Task::get(b);
+        if (task == 0) break;
 
-        fdn = task_createStdStream(tsk, c);
+        fdn = task->createStdStream(c);
         if (fdn == 0) break;
 
-        task_attach(task_getCurrent(), fdn);
+        Task::current()->attach(fdn);
         return (u32)fdn;
     case 0x42: // process_current
-        return task_getCurrent()->pid;
+        return Task::current()->pid;
     case 0x43: // process_createWithStdout
-        tsk = task_create((const char*)b);
-        if (tsk == 0) break;
+        task = Task::create((const char*)b);
+        if (task == 0) break;
 
-        fdn = task_createStdStream(tsk, STDOUT);
+        fdn = task->createStdStream(STDOUT);
         if (fdn == 0) break;
 
-        task_attach(task_getCurrent(), fdn);
+        Task::current()->attach(fdn);
         *(fd**)c = fdn;
-        return tsk->pid;
+        return task->pid;
 
     case 0x60: // open
-        return (u32)task_open((const char*)b, (int)c);
+        return (u32)Task::open((const char*)b, (int)c);
     
     case 0x80: // video_get
         return vga_get((int)b);

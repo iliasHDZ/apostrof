@@ -18,8 +18,8 @@ typedef struct {
 } __attribute__((packed)) idt_pointer;
 
 #define IDT_ENTRIES 256
-idt_gate    idt[IDT_ENTRIES];
-idt_pointer idt_ptr;
+extern idt_gate    idt[IDT_ENTRIES];
+extern idt_pointer idt_ptr;
 
 void idt_setGate(int n, u32 handler);
 

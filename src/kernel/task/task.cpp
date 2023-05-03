@@ -1,242 +1,104 @@
-extern "C" {
-#include "task.h"
-#include "../vga.h"
-#include "../error.h"
+#include "task.hpp"
+#include "elf32.hpp"
 
-#include "elf32.h"
+extern "C" {
+#include "../vga.h"
 }
 
-// From assembly at /src/kernel/int/isr_a.asm
-extern "C" void interrupt_return(u32 esp, u32 ebp);
-
-extern "C" {
-u32 task_last_id = 1;
+using namespace apo;
 
 u32 task_previous_esp = 0;
 u32 task_previous_ebp = 0;
 
-u32 task_next_esp  = 0;
-u32 task_next_ebp  = 0;
+u32 task_next_esp = 0;
+u32 task_next_ebp = 0;
 
-task*  task_current = 0;
+// From assembly at /src/kernel/int/isr_a.asm
+extern "C" void interrupt_return(u32 esp, u32 ebp);
 
-PARRAY tasklist;
+u32 task_last_id = 1;
 
-u32    task_list_current = 0;
+Task::Task() {}
 
-void task_init() {
-    if (parray(&tasklist, 10) != 0)
-        error("Cannot init 'task': kmalloc failed");
+Task::~Task() {
+    // TODO: Delete all properties
+    fds.~Array();
+    blocks.~Array();
+
+    vmem_freeMemory(memory);
+}
+    
+Array<Task*>* tasklist;
+Task* currentTask;
+
+void Task::init() {
+    tasklist = new Array<Task*>(10);
 }
 
-typedef struct {
-    u32 base;
-    u32 limit;
-} task_heap_block;
-
-task* task_create(const char* path) {
-    task* ret = (task*)kmalloc(sizeof(task));
-    if (ret == 0) return 0;
+Task* Task::create(const char* path) {
+    auto task = new Task();
+    if (task == nullptr) return nullptr;
 
     char* error = "";
 
     vmem* last_mem = vmem_current();
 
-    if (!elf32_load(path, ret, 4096 * 16, &error)) {
+    if (!elf32_load(path, task, 4096 * 16, &error)) {
         vga_writeText(error);
         return 0;
     }
 
-    if (parray(&(ret->fds), 10) != 0) return 0;
-    ret->pid     = task_last_id++;
-    ret->regs    = 0;
-    ret->running = 0;
-    ret->esp     = 0;
-    ret->ebp     = 0;
+    task->pid       = task_last_id++;
+    task->registers = nullptr;
+    task->running   = 0;
+    task->esp       = 0;
+    task->ebp       = 0;
 
-    ret->stdin  = fd_createInStream();
-    ret->stdout = void_stream;
-    ret->stderr = void_stream;
+    task->stdin  = fd_createInStream();
+    task->stdout = void_stream;
+    task->stderr = void_stream;
 
     vmem_switchMemory(last_mem);
 
-    array(&ret->blocks, sizeof(task_heap_block), 50);
-
-    parray_push(&tasklist, ret);
-    return ret;
+    tasklist->push(task);
+    return task;
 }
 
-task* task_get(u32 pid) {
-    for (int i = 0; i < tasklist.count; i++) {
-        task* t = (task*)parray_get(&tasklist, i);
-        if (t->pid == pid) return t;
-    }
-    return 0;
+Task* Task::get(u32 pid) {
+    for (auto task : *tasklist)
+        if (task->pid == pid) return task;
+
+    return nullptr;
 }
 
-void task_close(task* t, int code) {
-    parray_remove(&tasklist, t);
-
-    for (int i = 0; i < t->fds.count; i++)
-        fd_close((fd*)parray_get(&(t->fds), i));
-    
-    parray_free(&(t->fds));
-
-    vmem_freeMemory(t->mem);
-    array_free(&(t->blocks));
-    kfree(t);
-}
-
-task* task_getCurrent() {
-    return task_current;
-}
-
-int task_attach(task* t, fd* fd) {
-    parray_push(&(t->fds), fd);
-}
-
-u8 task_fd_present(task* t, fd* fd) {
-    for (int i = 0; i < t->fds.count; i++)
-        if (parray_get(&(t->fds), i) == fd) return 1;
-
-    return 0;
-}
-
-void task_resume(task* t) {
-    vmem_switchMemory(t->mem);
-    task_current = t;
-
-    if (!t->running) {
-        t->running = 1;
-
-        asm("sti;"
-            "mov %%eax, %%esp;"
-            "mov %%esp, %%ebp;"
-            "jmp %%ebx;" : : "a"(t->stack), "b"(t->entry));
-    } else {
-        u32 task_next_esp = t->esp;
-        u32 task_next_ebp = t->ebp;
-
-        interrupt_return(task_next_esp, task_next_ebp);
-    }
-}
-
-fd* task_getfd(task* t, u32 fdn) {
-    switch ((u32)fdn) {
-    case STDIN:  return t->stdin;
-    case STDOUT: return t->stdout == 0 ? void_stream : t->stdout;
-    case STDERR: return t->stderr == 0 ? void_stream : t->stderr;
-    }
-
-    for (int i = 0; i < t->fds.count; i++) {
-        fd* f = (fd*)parray_get(&(t->fds), i);
-        if (f == (fd*)fdn)
-            return f;
-    }
-
-    return 0;
-}
-
-fd* task_createStdStream(task* task, int type) {
-    fd* ret;
-
-    switch (type) {
-    case STDIN:
-        return fd_createOutStream(task->stdin);
-    case STDOUT:
-        ret = fd_createInStream();
-        task->stdout = fd_createOutStream(ret);
-        return ret;
-    case STDERR:
-        ret = fd_createInStream();
-        task->stderr = fd_createOutStream(ret);
-        return ret;
-    }
-}
-
-fd* task_open(const char* path, int flags) {
-    task* t = task_getCurrent();
-    if (t == 0) return 0;
-
-    if (cmpstr(path, "/dev/fb"))
-        return vga_open();
-
-    return 0;
-}
-
-u32 task_read(fd* fd, char* buffer, u32 size) {
-    fd = task_getfd(task_current, (u32)fd);
-    if (fd == 0) return 0;
-
-    if (fd->type == FD_RO_FBUFFER || fd->type == FD_RW_FBUFFER || fd->type == FD_IN_STREAM)
-        return fd_read(fd, buffer, size);
-}
-
-u32 task_write(fd* fd, char* buffer, u32 size) {
-    fd = task_getfd(task_current, (u32)fd);
-
-    if (fd == 0) return 0;
-
-    if (fd->type == FD_RW_FBUFFER || fd->type == FD_OUT_STREAM || fd->type == FD_VOID)
-        return fd_write(fd, buffer, size);
-}
-
-u32 task_tell(fd* fd) {
-    fd = task_getfd(task_current, (u32)fd);
-    if (fd == 0) return 0;
-
-    return fd_tell(fd);
-}
-
-u32 task_seek(fd* fd, int offset, int whence) {
-    fd = task_getfd(task_current, (u32)fd);
-    if (fd == 0) return 0;
-
-    return fd_seek(fd, offset, whence);
-}
-
-void task_switch() {
-    if (task_current == 0) {
-        task_next_esp = task_previous_esp;
-        task_next_ebp = task_previous_ebp;
-        interrupt_return(task_next_esp, task_next_ebp);
-    }
-
-    task_current->esp = task_previous_esp;
-    task_current->ebp = task_previous_ebp;
-
-    task_list_current++;
-    if (task_list_current >= tasklist.count) task_list_current = 0;
-
-    task_resume((task*)parray_get(&tasklist, task_list_current));
+Task* Task::current() {
+    return currentTask;
 }
 
 task_heap_block* taskmm_getEntryFromIndex(u32 index);
 
 u8 taskmm_addEntry(u32 base, u32 limit) {
     int i = 0;
-    for (; i < task_current->blocks.count; i++) {
+    for (; i < currentTask->blocks.size(); i++) {
         task_heap_block* block = taskmm_getEntryFromIndex(i);
         if (block->base > base) break;
     }
 
     task_heap_block block = (task_heap_block){base, limit};
 
-    array_insert(&(task_current->blocks), &block, i);
+    currentTask->blocks.insert(block, i);
     return 1;
 }
 
 int taskmm_getEntryIndex(u32 base) {
     int e = 0;
 
-    task_heap_block block;
-    if (!array_get(&(task_current->blocks), e, &block))
-        return -1;
+    task_heap_block block = currentTask->blocks[e];
     
-    while (e < task_current->blocks.count) {
+    while (e < currentTask->blocks.size()) {
         if (block.base == base) return e;
-        if (++e < task_current->blocks.count)
-            array_get(&(task_current->blocks), e, &block);
+        if (++e < currentTask->blocks.size())
+            block = currentTask->blocks[e];
     }
 
     return -1;
@@ -246,63 +108,104 @@ u8 taskmm_removeEntry(u32 base) {
     int idx = taskmm_getEntryIndex(base);
     if (idx == -1) return 0;
 
-    array_remove(&(task_current->blocks), idx);
+    currentTask->blocks.remove(idx);
     return 1;
 }
 
 task_heap_block* taskmm_getEntryFromIndex(u32 index) {
-    return (task_heap_block*)(task_current->blocks.buffer + index * task_current->blocks.size);
+    return &currentTask->blocks[index];
 }
 
 task_heap_block* taskmm_getEntry(u32 base) {
     int idx = taskmm_getEntryIndex(base);
     if (idx == -1) return 0;
 
-    return (task_heap_block*)(task_current->blocks.buffer + idx * task_current->blocks.size);
+    return taskmm_getEntryFromIndex(idx);
 }
 
 int taskmm_allocHeapPages(u32 count) {
     for (int i = 0; i < count; i++) {
-        vmem_allocPage(task_current->mem, task_current->heap_limit, VMEM_PRESENT | VMEM_WRITABLE | VMEM_USER);
-        task_current->heap_limit += 4096;
+        vmem_allocPage(currentTask->memory, currentTask->heap_brk, VMEM_PRESENT | VMEM_WRITABLE | VMEM_USER);
+        currentTask->heap_brk += 4096;
     }
 }
 
 int taskmm_freeHeapPages(u32 count) {
     for (int i = 0; i < count; i++) {
-        task_current->heap_limit -= 4096;
-        vmem_freePage(task_current->mem, task_current->heap_limit);
+        currentTask->heap_brk -= 4096;
+        vmem_freePage(currentTask->memory, currentTask->heap_brk);
     }
 }
 
 void taskmm_collect() {
-    u32 max_limit = task_current->heap;
+    u32 max_limit = currentTask->heap;
 
-    for (int i = 0; i < task_current->blocks.count; i++) {
+    for (int i = 0; i < currentTask->blocks.size(); i++) {
         task_heap_block* block = taskmm_getEntryFromIndex(i);
         if (block->limit > max_limit) max_limit = block->limit;
     }
 
-    int limit_page = (max_limit - task_current->heap - 1) / 4096;
-    int heap_limit_page = (task_current->heap_limit - task_current->heap - 1) / 4096;
+    int limit_page = (max_limit - currentTask->heap - 1) / 4096;
+    int heap_limit_page = (currentTask->heap_brk - currentTask->heap - 1) / 4096;
 
     if (limit_page < heap_limit_page)
         taskmm_freeHeapPages(heap_limit_page - limit_page);
 }
 
-void* task_realloc(void* ptr, u32 size) {
+fd* Task::open(const char* path, int flags) {
+    Task* task = currentTask;
+    if (task == 0) return 0;
+
+    if (cmpstr(path, "/dev/fb"))
+        return vga_open();
+
+    return 0;
+}
+
+u32 Task::read(fd* fd, char* buffer, u32 size) {
+    fd = currentTask->getfd((u32)fd);
+    if (fd == 0) return 0;
+
+    if (fd->type == FD_RO_FBUFFER || fd->type == FD_RW_FBUFFER || fd->type == FD_IN_STREAM)
+        return fd_read(fd, buffer, size);
+}
+
+u32 Task::write(fd* fd, char* buffer, u32 size) {
+    fd = currentTask->getfd((u32)fd);
+
+    if (fd == 0) return 0;
+
+    if (fd->type == FD_RW_FBUFFER || fd->type == FD_OUT_STREAM || fd->type == FD_VOID)
+        return fd_write(fd, buffer, size);
+}
+
+u32 Task::tell(fd* fd) {
+    fd = currentTask->getfd((u32)fd);
+    if (fd == 0) return 0;
+
+    return fd_tell(fd);
+}
+
+u32 Task::seek(fd* fd, int offset, int whence) {
+    fd = currentTask->getfd((u32)fd);
+    if (fd == 0) return 0;
+
+    return fd_seek(fd, offset, whence);
+}
+
+void* Task::realloc(void* ptr, u32 size) {
     int idx = taskmm_getEntryIndex((u32)ptr);
-    if (idx == -1) return task_malloc(size);
+    if (idx == -1) return Task::malloc(size);
 
     task_heap_block* e = taskmm_getEntryFromIndex(idx);
 
-    if (idx + 1 >= task_current->blocks.count)
-        if ((task_current->heap_limit - e->base) >= size) {
+    if (idx + 1 >= currentTask->blocks.size())
+        if ((currentTask->heap_brk - e->base) >= size) {
             e->limit = e->base + size;
             return ptr;
         } else {
-            u32 excess = e->base + size - task_current->heap_limit;
-            u32 prevsz = task_current->heap_limit - e->base;
+            u32 excess = e->base + size - currentTask->heap_brk;
+            u32 prevsz = currentTask->heap_brk - e->base;
 
             if (excess > 0) {
                 taskmm_allocHeapPages(excess / 4096 + (excess % 4096 > 0));
@@ -324,7 +227,7 @@ void* task_realloc(void* ptr, u32 size) {
 
             taskmm_removeEntry((u32)src);
 
-            void* ret = task_malloc(size);
+            void* ret = Task::malloc(size);
 
             if (ret != 0)
                 return memcpy(ret, src, size);
@@ -336,10 +239,10 @@ void* task_realloc(void* ptr, u32 size) {
     }
 }
 
-void* task_malloc(u32 size) {
-    u32 last_limit = task_current->heap;
+void* Task::malloc(u32 size) {
+    u32 last_limit = currentTask->heap;
 
-    for (int i = 0; i < task_current->blocks.count; i++) {
+    for (int i = 0; i < currentTask->blocks.size(); i++) {
         task_heap_block* e = taskmm_getEntryFromIndex(i);
 
         if ((e->base - last_limit) >= size) {
@@ -350,11 +253,11 @@ void* task_malloc(u32 size) {
         last_limit = e->limit;
     }
 
-    if ((task_current->heap_limit - last_limit) >= size)
+    if ((currentTask->heap_brk - last_limit) >= size)
         if (!taskmm_addEntry(last_limit, last_limit + size)) return (void*)0;
         else return (void*)last_limit;
     else {
-        u32 excess = last_limit + size - task_current->heap_limit;
+        u32 excess = last_limit + size - currentTask->heap_brk;
 
         if (excess > 0) {
             taskmm_allocHeapPages(excess / 4096 + (excess % 4096 > 0));
@@ -364,14 +267,97 @@ void* task_malloc(u32 size) {
     }
 }
 
-void task_free(void* block) {
+void Task::free(void* block) {
     taskmm_removeEntry((u32) block);
     taskmm_collect();
 }
 
-void task_exception(int type, int err_code) {
+void Task::switchTask() {
+    if (currentTask == 0) {
+        task_next_esp = task_previous_esp;
+        task_next_ebp = task_previous_ebp;
+        interrupt_return(task_next_esp, task_next_ebp);
+    }
+
+    currentTask->esp = task_previous_esp;
+    currentTask->ebp = task_previous_ebp;
+
+    u32 idx = tasklist->indexOf(currentTask);
+
+    idx++;
+    if (idx >= tasklist->size()) idx = 0;
+
+    (*tasklist)[idx]->resume();
+}
+
+void Task::exception(int type, int err_code) {
     vga_setCursor(0, 2);
     vga_writeText("I'm pretty sure a task exception happened.\n");
 }
 
+fd* Task::createStdStream(int type) {
+    fd* ret;
+
+    switch (type) {
+    case STDIN:
+        return fd_createOutStream(stdin);
+    case STDOUT:
+        ret = fd_createInStream();
+        stdout = fd_createOutStream(ret);
+        return ret;
+    case STDERR:
+        ret = fd_createInStream();
+        stderr = fd_createOutStream(ret);
+        return ret;
+    }
+}
+
+fd* Task::getfd(u32 fdn) {
+    switch ((u32)fdn) {
+    case STDIN:  return stdin;
+    case STDOUT: return stdout == 0 ? void_stream : stdout;
+    case STDERR: return stderr == 0 ? void_stream : stderr;
+    }
+
+    for (int i = 0; i < fds.size(); i++) {
+        fd* f = fds[i];
+        if (f == (fd*)fdn)
+            return f;
+    }
+
+    return 0;
+}
+
+int Task::attach(fd* f) {
+    fds.push(f);
+}
+
+void Task::close(int code) {
+    for (int i = 0; i < tasklist->size(); i++) {
+        if ((*tasklist)[i] == this) {
+            tasklist->remove(i);
+            break;
+        }
+    }
+
+    delete this;
+}
+
+void Task::resume() {
+    vmem_switchMemory(memory);
+    currentTask = this;
+
+    if (!running) {
+        running = 1;
+
+        asm("sti\n"
+            "mov %%eax, %%esp\n"
+            "mov %%esp, %%ebp\n"
+            "jmp %%ebx\n" : : "a"(stack), "b"(entry));
+    } else {
+        u32 task_next_esp = esp;
+        u32 task_next_ebp = ebp;
+
+        interrupt_return(task_next_esp, task_next_ebp);
+    }
 }
